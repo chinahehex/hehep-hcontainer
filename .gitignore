@@ -1,0 +1,11 @@
+logs
+.buildpath
+.project
+.settings
+.idea
+.DS_Store
+/*.bat
+/*.ini
+/vendor
+/*.lock
+/*.txt

@@ -1,0 +1,164 @@
+<?php
+namespace hehe\core\hcontainer\proxy;
+
+use ReflectionMethod;
+use ReflectionParameter;
+
+/**
+ * 代理类生成工具
+ *<B>说明：</B>
+ *<pre>
+ * 略
+ *</pre>
+ */
+class ProxyFullClassTemplate
+{
+    /**
+     * 生成代理类入口
+     *<B>说明：</B>
+     *<pre>
+     * 略
+     *</pre>
+     * @param string $className 类名称
+     * @param string $proxyClassName 代理类名称
+     * @return string
+     */
+    static public function build($className,$proxyClassName)
+    {
+
+        $reflectionClass = new \ReflectionClass($className);
+        $reflectionMethods = $reflectionClass->getMethods(\ReflectionMethod::IS_PUBLIC | \ReflectionMethod::IS_PROTECTED);
+
+        // 定义代理类名,以及对应的代理事件属性名称
+        $id = \uniqid('', false);
+        $handlerPropertyName = '__handler' . $id;
+
+        $proxyClassTemplate = "class $proxyClassName extends $className{
+            private \$$handlerPropertyName;
+            public function __construct(\$handler)
+            {
+                \$this->{$handlerPropertyName} = \$handler;
+            }";
+
+        // Methods
+        $proxyClassTemplate .= self::buildMethodTemplate($reflectionMethods, $handlerPropertyName);
+        $proxyClassTemplate .= "\r\n}";
+
+        return $proxyClassTemplate;
+    }
+
+    /**
+     * 生成类方法模板
+     *<B>说明：</B>
+     *<pre>
+     * 略
+     *</pre>
+     * @param ReflectionMethod[] $reflectionMethods 类方法对象列表
+     * @param string $proxyHandlerPropertyName
+     * @return string
+     */
+    static private function buildMethodTemplate($reflectionMethods = [], $proxyHandlerPropertyName)
+    {
+        $methods = [];
+        foreach ($reflectionMethods as $reflectionMethod) {
+            $methodName = $reflectionMethod->getName();
+            // 构造方法,静态方法过滤
+            if ($reflectionMethod->isConstructor() || $reflectionMethod->isStatic()) {
+                continue;
+            }
+
+            // 方法体
+            $methodBody = "{
+                return \$this->{$proxyHandlerPropertyName}->invoke('{$methodName}', func_get_args());
+            }
+            ";
+
+            $methodsTemplate = "";
+            $methodsTemplate .= " public function $methodName (";
+            $methodsTemplate .= self::buidlMethodParamsTemplate($reflectionMethod);
+            $methodsTemplate .= ' ) ';
+            $methodsTemplate .= $methodBody;
+
+            $methods[] = $methodsTemplate;
+        }
+
+        return implode("\r\n",$methods);
+    }
+
+    /**
+     * 生成方法参数模板
+     *<B>说明：</B>
+     *<pre>
+     * 略
+     *</pre>
+     * @param ReflectionMethod $reflectionMethod 类名称
+     * @return string
+     */
+    static private function buidlMethodParamsTemplate(ReflectionMethod $reflectionMethod)
+    {
+        $reflectionParameters = $reflectionMethod->getParameters();
+        $params = [];
+        foreach ($reflectionParameters as $reflectionParameter) {
+            // 参数类型(\ReflectionMethod $reflectionMethod)
+            $type = $reflectionParameter->getType();
+            $typeName = "";
+            if ($type !== null) {
+                $type = $type->__toString();
+                $typeName = " $type ";
+            }
+
+            $methodParameterName = $reflectionParameter->getName();
+            if ($reflectionParameter->isPassedByReference()) {
+                $paramName = " &\${$methodParameterName} ";
+            } elseif ($reflectionParameter->isVariadic()) {
+                $paramName = " ...\${$methodParameterName} ";
+            } else {
+                $paramName = " \${$methodParameterName} ";
+            }
+
+            // 参数默认值
+            $parameterDefaultValue = "";
+            if ($reflectionParameter->isOptional() && $reflectionParameter->isVariadic() === false) {
+                $parameterDefaultValue = self::formatParameterDefaultValue($reflectionParameter);
+            }
+
+            $params[] = "{$typeName}{$paramName}{$parameterDefaultValue}";
+        }
+
+        return implode(',',$params);
+    }
+
+    /**
+     * 格式化默认值
+     *<B>说明：</B>
+     *<pre>
+     * 略
+     *</pre>
+     * @param ReflectionParameter $reflectionParameter 参数对象
+     * @return string
+     */
+    private static function formatParameterDefaultValue(\ReflectionParameter $reflectionParameter)
+    {
+        $defaultValueTpl = '';
+        $defaultValue = $reflectionParameter->getDefaultValue();
+        if ($reflectionParameter->isDefaultValueConstant()) {
+            $defaultConst = $reflectionParameter->getDefaultValueConstantName();
+            $defaultValueTpl = " = {$defaultConst}";
+        } else if (\is_bool($defaultValue)) {
+            $value = $defaultValue ? 'true' : 'false';
+            $defaultValueTpl = " = {$value}";
+        } else if (\is_string($defaultValue)) {
+            $defaultValueTpl = " = '{$defaultValue}'";
+        } else if (\is_int($defaultValue)) {
+            $defaultValueTpl = " = {$defaultValue}";
+        } else if (\is_array($defaultValue)) {
+            $defaultValueTpl = ' = []';
+        } else if (\is_float($defaultValue)) {
+            $defaultValueTpl = " = {$defaultValue}";
+        } else if (\is_object($defaultValue) || null === $defaultValue) {
+            $defaultValueTpl = ' = null';
+        }
+
+        return $defaultValueTpl;
+    }
+}
