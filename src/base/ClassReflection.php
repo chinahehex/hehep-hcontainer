@@ -78,16 +78,16 @@ class ClassReflection
      * @param array $args 构造参数
      * @return object
      */
-    public function make($args = [])
+    public function make(array $args = [])
     {
         // 获取默认参数
-        $params = $this->buildParmas($args);
+        $arg_params = $this->buildConstructParmas($args);
         $reflection = $this->getReflection();
 
-        if (empty($params)) {
+        if (empty($arg_params)) {
             return $reflection->newInstance();
         } else {
-            return $reflection->newInstanceArgs($params);
+            return $reflection->newInstanceArgs($arg_params);
         }
     }
 
@@ -101,7 +101,7 @@ class ClassReflection
      * @param array $params 默认构造参数
      * @return object
      */
-    protected function mergeParams($args,$params)
+    protected function mergeConstructParams(array $args,array $params)
     {
         // 合并参数
         if (!empty($args)) {
@@ -125,8 +125,9 @@ class ClassReflection
      *<pre>
      *  略
      *</pre>
+     * @return array ['参数名1'=>'默认值','参数名2'=>'默认值']
      */
-    public function getParams()
+    protected function getConstructParams():array
     {
         if (count($this->parameters) > 0) {
             return $this->parameters;
@@ -142,29 +143,34 @@ class ClassReflection
                     $defaultValue = $param->getDefaultValue();
                     if (is_string($defaultValue)) {
                         if (preg_match(static::BEAN_REF_REGEX, $defaultValue, $match) ) {
-                            $funcName = $match[1];
-                            $definition = new Definition(['_ref'=>$funcName]);
+                            $ref_bean_name = $match[1];
+                            $definition = new Definition(['_ref'=>$ref_bean_name]);
                             $definition->setContainerManager($this->definition->getContainerManager());
-                            $defaultValue = $definition->make([]);
+                            $defaultValue = $definition->make();
                         } else if (preg_match(static::PARAMS_REGEX, $defaultValue, $match)) {
-                            $funcName = $match[1];
-                            $funcParams = $match[2];
-                            $funcParams = explode(static::PARAMS_SPLIT_CHARACTER,$funcParams);
-                            $definition = new Definition(['_func'=>[$funcName,$funcParams]]);
+                            $bean_func_name = $match[1];
+                            $bean_func_params = $match[2];
+                            $bean_func_params = explode(static::PARAMS_SPLIT_CHARACTER,$bean_func_params);
+                            $definition = new Definition(['_func'=>[$bean_func_name,$bean_func_params]]);
                             $definition->setContainerManager($this->definition->getContainerManager());
-                            $defaultValue = $definition->make([]);
+                            $defaultValue = $definition->make();
                         }
                     }
 
                     $parameters[$name] = $defaultValue;
                 } else {
-//                    $paramClass = $param->getClass();
-//                    // 对象变量
-//                    if ($paramClass !== null) {
-//                        $paramValue = Instance::make($paramClass->getName());
-//                    }
-                    $paramValue = null;
-                    $parameters[$name] = $paramValue;
+                    $defaultValue = null;
+                    if (!$param->getType()->isBuiltin()) {
+                        // 非系统类型
+                        $class = $param->getClass()->getName();
+                        // 如果类是bean,则自动从容器读取bean 对象
+                        $hcontainer = $this->definition->getContainerManager();
+                        if ($hcontainer->hasBeanByClass($class)) {
+                            $defaultValue = $hcontainer->getBeanByClass($class);
+                        }
+                    }
+
+                    $parameters[$name] = $defaultValue;
                 }
             }
         }
@@ -181,22 +187,22 @@ class ClassReflection
      *  略
      *</pre>
      */
-    protected function buildParmas($args)
+    protected function buildConstructParmas(array $args):array
     {
-        $params = $this->getParams();
-        $params = $this->mergeParams($args,$params);
+        $construct_params = $this->getConstructParams();
+        $bean_args = $this->mergeConstructParams($args,$construct_params);
 
-        if (!empty($params)) {
-            foreach ($params as $index => $value) {
+        if (!empty($bean_args)) {
+            foreach ($bean_args as $index => $value) {
                 if ($value instanceof Definition) {
-                    $value = $value->make([]);
+                    $bean_args[$index] = $value->make([]);
+                } else {
+                    $bean_args[$index] = $value;
                 }
-
-                $params[$index] = $value;
             }
         }
 
-        return $params;
+        return $bean_args;
     }
 
     /**
@@ -206,7 +212,7 @@ class ClassReflection
      *  略
      *</pre>
      */
-    protected function getReflection()
+    protected function getReflection():ReflectionClass
     {
         if ($this->reflection ==  null) {
             $this->reflection = new ReflectionClass($this->clazz);
@@ -224,7 +230,7 @@ class ClassReflection
      * @param  array $array 目标数组
      * @return bool true 表示关联数组 false 表示索引数组
      */
-    private function isAssoc($array)
+    private function isAssoc($array):bool
     {
         return array_keys($array) !== range(0, count($array) - 1);
     }

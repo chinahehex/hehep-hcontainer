@@ -8,10 +8,13 @@ use hehe\core\hcontainer\ann\base\Annotation;
  */
 class Advice
 {
+    // 通知点位置
     public $advice;
 
+    // 业务行为集合
     public $behaviors = [];
 
+    // 拦截点表达式
     public $pointcut = '';
 
     /**

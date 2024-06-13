@@ -12,10 +12,10 @@ class Container
 {
 
     /**
-     * 对象有效范围
+     * 对象作用域
      *<B>说明：</B>
      *<pre>
-     *  app 应用级别，forever 永远不失效
+     *  略
      *</pre>
      * @var string
      */
@@ -39,7 +39,7 @@ class Container
      *</pre>
      * @param string $scope 作用范围
      */
-    public function __construct($scope)
+    public function __construct(string $scope = '')
     {
         $this->scope = $scope;
     }
@@ -53,7 +53,7 @@ class Container
      * @param string $beanId
      * @return boolean
      */
-    public function hasBean($beanId)
+    public function hasBean(string $beanId):bool
     {
         if (isset($this->beans[$beanId])) {
             return true;
@@ -69,9 +69,9 @@ class Container
      *  略
      *</pre>
      * @param string $beanId
-     * @return object
+     * @return Object
      */
-    public function getBean($beanId)
+    public function getBean(string $beanId)
     {
         // 单例
         if (isset($this->beans[$beanId])) {
@@ -90,7 +90,7 @@ class Container
      * @param string $beanId
      * @param object $bean
      */
-    public function setBean($beanId,$bean)
+    public function setBean(string $beanId,$bean):void
     {
         $this->beans[$beanId] = $bean;
     }

@@ -93,7 +93,7 @@ class ContainerManager
     protected $scanRules = [];
 
     /**
-     * 容器范围
+     * 容器作用域
      *<B>说明：</B>
      *<pre>
      *  app 应用级别,应用启动,开始生效
@@ -147,14 +147,14 @@ class ContainerManager
     protected $beans = [];
 
     /**
-     * 范围容器事件
+     * 容器作用域处理
      *<B>说明：</B>
      *<pre>
      *  存储单例
      *</pre>
      * @var array
      */
-    protected $scopeEvent = null;
+    protected $scopeHandlers = null;
 
     /**
      * 构造方法
@@ -275,9 +275,9 @@ class ContainerManager
         return $this;
     }
 
-    public function setScopeEvent($scopeEvent) {
-
-        $this->scopeEvent = $scopeEvent;
+    public function setScopeHandler($scopeHandlers)
+    {
+        $this->scopeHandlers = $scopeHandlers;
     }
 
     /**
@@ -292,7 +292,7 @@ class ContainerManager
     public function getScopeContainer($scope)
     {
 
-        if (!isset($this->scopeEvent[$scope])) {
+        if (!isset($this->scopeHandlers[$scope])) {
             if (!isset($this->scopeContainer[$scope])) {
                 $container = $this->makeContainer($scope);
                 $this->scopeContainer[$scope] = $container;
@@ -300,7 +300,7 @@ class ContainerManager
                 $container = $this->scopeContainer[$scope];
             }
         } else {
-            $scopeContainerFunc = $this->scopeEvent[$scope];
+            $scopeContainerFunc = $this->scopeHandlers[$scope];
             $container = call_user_func($scopeContainerFunc);
         }
 
@@ -331,13 +331,15 @@ class ContainerManager
      * @param array $args
      * @return object
      */
-    public function getBean($beanId,$args = [])
+    public function getBean(string $beanId,array $args = [])
     {
         $definition = $this->getDefinition($beanId);
+
+        // 获取对应的容器
         $container = $definition->getContainer();
         if (!$container->hasBean($beanId)) {
-            // 获取对应的容器
             $bean = $definition->make($args);
+            // 如果是单例,则将bean对象注入容器中
             if ($definition->isSingle()) {
                 $container->setBean($beanId,$bean);
             }
@@ -346,6 +348,22 @@ class ContainerManager
         }
 
         return $bean;
+    }
+
+    /**
+     * 根据类路径获取bean对象,
+     * @param string $clazz
+     * @param array $args
+     * @return object
+     */
+    public function getBeanByClass(string $clazz,array $args = [])
+    {
+        $beanId = $this->getBeanId($clazz);
+        if (!is_null($beanId)) {
+            return $this->getBean($beanId,$args);
+        } else {
+            return null;
+        }
     }
 
     /**
@@ -358,7 +376,7 @@ class ContainerManager
      * @param array $args
      * @return object
      */
-    public function make($beanId,$args = [])
+    public function make(string $beanId,array $args = [])
     {
         // 创建bean 定义对象
         $definition = $this->getDefinition($beanId);
@@ -376,7 +394,7 @@ class ContainerManager
      * @param string $beanId 组件id
      * @return Definition
      */
-    public function getDefinition($beanId)
+    public function getDefinition(string $beanId):Definition
     {
         if (isset($this->definitions[$beanId])) {
             return $this->definitions[$beanId];
@@ -406,7 +424,7 @@ class ContainerManager
      *</pre>
      * @param array $components 组件配置
      */
-    public function batchRegister($components = [])
+    public function batchRegister(array $components = []):void
     {
         foreach ($components as $id=>$component) {
             $this->appendComponent($id,$component);
@@ -423,7 +441,7 @@ class ContainerManager
      * @param string $class 组件类
      * @param array $component 组件配置
      */
-    public function register($id,$class = null,$component = [])
+    public function register(string $id,string $class = null,array $component = []):void
     {
         $component = array_merge($component,[
             'id'=>$id,
@@ -435,7 +453,12 @@ class ContainerManager
         return ;
     }
 
-    public function getBeanId($clazz)
+    /**
+     * 返回指定类路径对应的bean id
+     * @param string $clazz
+     * @return string|null
+     */
+    public function getBeanId(string $clazz):?string
     {
         if (isset($this->clazzBeanIdMap[$clazz])) {
             return $this->clazzBeanIdMap[$clazz];
@@ -445,7 +468,7 @@ class ContainerManager
     }
 
     /**
-     * 追加配置
+     * 追加bean配置
      * <B>说明：</B>
      *<pre>
      *  略
@@ -453,7 +476,7 @@ class ContainerManager
      * @param string $beanId bean id 或bean class path
      * @param array $component 配置
      */
-    public function appendComponent($beanId,$component)
+    public function appendComponent(string $beanId,array $component):void
     {
         $component = $this->formatComponent($beanId,$component);
 
@@ -467,7 +490,7 @@ class ContainerManager
         $this->clazzBeanIdMap[$component['class']] = $bid;
     }
 
-    public function hasComponent($beanId)
+    public function hasComponent(string $beanId):bool
     {
         if (isset($this->components[$beanId])) {
             return true;
@@ -476,12 +499,27 @@ class ContainerManager
         }
     }
 
-    public function getComponents()
+    /**
+     * 判断类是否配置过bean
+     * @param string $clazz
+     * @return bool
+     */
+    public function hasBeanByClass(string $clazz):bool
+    {
+        $beanId = $this->getBeanId($clazz);
+        if (is_null($beanId)) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    public function getComponents():array
     {
         return $this->components;
     }
 
-    protected function formatComponent($id,$component)
+    protected function formatComponent(string $id,array $component):array
     {
         if (!isset($component['id'])) {
             $component['id'] = $id;

@@ -27,7 +27,7 @@ class PointcutContext
     public $parameters;
 
     /**
-     * 执行的拦截点名称
+     * 执行的通知点名称
      * @var string
      */
     public $advice;

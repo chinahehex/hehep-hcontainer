@@ -41,6 +41,9 @@ class BeanTest extends TestCase
         /** @var UserinfoBean $userinfo**/
         $userinfo = $this->hcontainer->make('userinfo',["hehe"]);
         $this->assertTrue($userinfo->getName() == 'hehe');
+
+        $userinfo = $this->hcontainer->make('userinfo',["name"=>'hehex']);
+        $this->assertTrue($userinfo->getName() == 'hehex');
     }
 
     // 获取一个单利对象
@@ -78,5 +81,12 @@ class BeanTest extends TestCase
         /** @var UserBean $user**/
         $user = $this->hcontainer->getBean('user');
         $this->assertTrue($user->annRole->ok());
+    }
+
+    public function testArgsBean()
+    {
+        /** @var UserBean $user**/
+        $user = $this->hcontainer->getBean('user');
+        $this->assertTrue($user->argRole->ok());
     }
 }

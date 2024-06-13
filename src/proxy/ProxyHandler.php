@@ -1,6 +1,8 @@
 <?php
 namespace hehe\core\hcontainer\proxy;
 
+use \hehe\core\hcontainer\ContainerManager;
+
 /**
  * 代理事件处理类
  *<B>说明：</B>
@@ -16,15 +18,14 @@ class ProxyHandler
      */
     protected $containerManager;
 
-    public function getContainerManager()
+    public function getContainerManager():ContainerManager
     {
         return $this->containerManager;
     }
 
-    public function setContainerManager($containerManager)
+    public function setContainerManager(ContainerManager $containerManager):void
     {
         $this->containerManager = $containerManager;
-        return ;
     }
 
     /**
@@ -60,7 +61,7 @@ class ProxyHandler
      * @param array $parameters 参数
      * @return mixed
      */
-    public function invoke($method, $parameters)
+    public function invoke(string $method, array $parameters)
     {
         return call_user_func_array([$this->target, $method], $parameters);
     }

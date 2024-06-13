@@ -22,11 +22,10 @@ class AopProxyHandler extends ProxyHandler
      * @param array $parameters 参数
      * @return mixed
      */
-    public function invoke($method, $parameters)
+    public function invoke(string $method, array $parameters)
     {
-        $containerManager = $this->getContainerManager();
-        /** @var AopManager $aopManager */
-        $aopManager = $containerManager->getAopManager();
+        $hcontainer = $this->getContainerManager();
+        $aopManager = $hcontainer->getAopManager();
 
         return $aopManager->execute($this->target,$method,$parameters);
     }

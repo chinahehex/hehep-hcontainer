@@ -17,7 +17,6 @@ class Definition
 {
 
     const PARAMS_REGEX =  '/<(.+)::([^>]+)?>/';
-
     const BEAN_REF_REGEX =  '/<ref::([^>]+)?>/';
     const PARAMS_SPLIT_CHARACTER = '|';
     const SYS_ATTR_ONPROXY = '_onProxy';
@@ -29,7 +28,7 @@ class Definition
     const DEFAULT_SCOPE = 'forever';
 
     /**
-     * 容器全局唯一id
+     * bean全局唯一id
      *<B>说明：</B>
      *<pre>
      *  如未设置,则默认为对象的类名
@@ -47,7 +46,7 @@ class Definition
     protected static $sysAttr = ['_attrs','_scope','_ref','_func','class','_single','_init','_args','_onProxy','_proxyHandler'];
 
     /**
-     * 调用其他的bean 对象
+     * 调用其他的bean对象
      *<B>说明：</B>
      *<pre>
      *  略
@@ -68,7 +67,7 @@ class Definition
      * 对应的类名
      *<B>说明：</B>
      *<pre>
-     *  app.controller.indexController
+     *  略
      *</pre>
      */
     protected  $class = null;
@@ -92,11 +91,11 @@ class Definition
     protected $_attrs = [];
 
     /**
-     * 作用范围
+     * 作用域
      *<B>说明：</B>
      *<pre>
-     *  app 应用级别(每次请求结束后自动销毁)
-     *  forever 永久级别(必须重启php 服务后才能自动销毁)
+     *  app,request应用级别(每次请求结束后自动销毁)
+     *  forever 永久级别(必须重启php 服务后才会自动销毁)
      *</pre>
      */
     protected $_scope = '';
@@ -111,10 +110,10 @@ class Definition
     private $reflection = null;
 
     /**
-     * 初始化参数
+     * 初始化方法
      *<B>说明：</B>
      *<pre>
-     *  略
+     *  实例化对象后随即调用的第一个方法
      *</pre>
      */
     protected $_init = null;
@@ -156,15 +155,15 @@ class Definition
      */
     protected $containerManager;
 
-    public function getContainerManager()
+    public function getContainerManager():ContainerManager
     {
         return $this->containerManager;
     }
 
-    public function setContainerManager($containerManager)
+    public function setContainerManager(ContainerManager $containerManager):void
     {
         $this->containerManager = $containerManager;
-        return ;
+
     }
 
     /**
@@ -201,32 +200,32 @@ class Definition
     }
 
 
-    public function getId()
+    public function getId():string
     {
         return $this->_id;
     }
 
-    public function getRef()
+    public function getRef():string
     {
         return $this->_ref;
     }
 
-    public function getClazz()
+    public function getClazz():string
     {
         return $this->class;
     }
 
-    public function setSingle($single = true)
+    public function setSingle(bool $single = true):void
     {
         $this->_single = $single;
     }
 
-    public function isSingle()
+    public function isSingle():bool
     {
         return $this->_single;
     }
 
-    public function getScope()
+    public function getScope():string
     {
         if ($this->_scope == null) {
             return self::DEFAULT_SCOPE;
@@ -243,7 +242,7 @@ class Definition
      *</pre>
      * @return Container
      */
-    public function getContainer()
+    public function getContainer():Container
     {
         return $this->getContainerManager()->getScopeContainer($this->getScope());
     }
@@ -258,7 +257,7 @@ class Definition
      * @return object
      * @throws \Exception;
      */
-    public function make($args = [])
+    public function make(array $args = [])
     {
         if ($this->_ref != null) {
             return $this->getContainerManager()->getBean($this->_ref);
@@ -333,9 +332,9 @@ class Definition
      *  略
      *</pre>
      * @param array $args 构造参数
-     * @return object
+     * @return array
      */
-    protected function buildArgs($args)
+    protected function buildArgs(array $args):array
     {
         if (is_null($this->formatArgs)) {
             $this->formatArgs = $this->buildParams($this->_args);
@@ -359,7 +358,7 @@ class Definition
      *  略
      *</pre>
      */
-    protected function buildAttrs()
+    protected function buildAttrs():void
     {
         if (is_null($this->formatAttrs)) {
             $this->formatAttrs = $this->buildParams($this->_attrs);
@@ -373,7 +372,7 @@ class Definition
      *  略
      *</pre>
      */
-    public function getReflection()
+    public function getReflection():ClassReflection
     {
         if ($this->reflection == null) {
             $this->reflection = new ClassReflection($this->class,$this);
@@ -391,7 +390,7 @@ class Definition
      * @param array $params 参数
      * @return array
      */
-    protected function buildParams($params = [])
+    protected function buildParams(array $params = []):array
     {
         if (empty($params)) {
             return [];
@@ -442,7 +441,7 @@ class Definition
      * @param  array $attrs 参数
      * @return array
      */
-    protected function formatAttrs($attrs = [])
+    protected function formatAttrs(array $attrs = []):array
     {
         $attributes = [];
         $customAttrs = [];

@@ -8,45 +8,13 @@ use hehe\core\hcontainer\aop\base\Aspect;
  * aop 管理器
  *<B>说明：</B>
  *<pre>
- *
- * 基本概念:
- *
- *  Before Advice：在方法前切入；
-    After Advice：在方法后切入，抛出异常时也会切入；
-    After Returning Advice：在方法返回后切入，抛出异常不会切入；
-    After Throwing  Advice：在方法抛出异常时切入；
-    Around Advice：在方法执行前后切入，可以中断或忽略原有流程的执行
- *
- *
- * Joinpoint：拦截点，如某个业务方法
-    Pointcut：Joinpoint的表达式，表示拦截哪些方法。一个Pointcut对应多个Joinpoint
-    Advice：要切入的逻辑
-    Before Advice：在方法前切入
-    After Advice：在方法后切入，抛出异常则不会切入
-    After Returning Advice：在方法返回后切入，抛出异常则不会切入
-    After Throwing Advice：在方法抛出异常时切入
-    Around Advice：在方法执行前后切入，可以中断或忽略原有流程的执行
- *
- *</pre>
- *<B>示例：</B>
- *<pre>
- *  e.g 方法添加日志打印
- *
- * 定义日志行为
- * class LogHser extends AopBehavior
-    {
-        public function invoke($target, $method, $parameters, $returnResult, $t = null)
-        {
-            // TODO: Implement invoke() method.
-            echo "log:" . rand(1,200) . '-';
-        }
-    }
+ * 略
  *</pre>
  */
 class AopManager
 {
     /**
-     * 处理方法注解
+     * Aspect集合
      *<B>说明：</B>
      *<pre>
      *  基本格式:['class'=>'拦截点配置']
@@ -56,17 +24,17 @@ class AopManager
     public $aspects = [];
 
     /**
-     * 处理方法注解
+     * 添加切面
      *<B>说明：</B>
      *<pre>
      *  基本格式:['拦截点表达式']['拦截点方法'][通知点]
      *</pre>
-     * @param AopBehavior[] $aopBehaviors
+     * @param string $clazz 目标类
+     * @param string $pointcut 拦截点表达式,拦截的方法或正则表达式
      * @param string $advice 通知点
-     * @param string $pointcut 拦截点表达式,一般为正则表达式
-     * @param string $clazz 类
+     * @param AopBehavior[] $aopBehaviors 切入行为
      */
-    public function addAspect($aopBehaviors = [],$advice,$pointcut,$clazz)
+    public function addAspect(string $clazz,string $pointcut,string $advice,array $aopBehaviors = []):void
     {
         $clazz_pointcut = $this->buildPointcut($clazz,$pointcut);
         if (isset($this->aspects[$clazz_pointcut])) {
@@ -81,15 +49,16 @@ class AopManager
 
 
     /**
-     * 匹配拦截点有通知
+     * 匹配是否满足条件的切面
      *<B>说明：</B>
      *<pre>
-     *  基本格式:['拦截点表达式']['拦截点方法'][通知点]
+     *  略
      *</pre>
-     * @param string $expression
+     * @param string $clazz 目标类
+     * @param string $method 目标方法
      * @return Aspect|boolean false 表示匹配不到
      */
-    public function matchAspect($clazz,$method)
+    public function matchAspect(string $clazz,string $method)
     {
         $match_result = false;
         if (!isset($this->aspects[$clazz])) {
@@ -106,7 +75,7 @@ class AopManager
     }
 
     /**
-     * 执行切面行为
+     * 执行目标方法
      *<B>说明：</B>
      *<pre>
      *  略
@@ -116,7 +85,7 @@ class AopManager
      * @param array $parameters 方法参数
      * @return mixed;
      */
-    public function execute($target,$method, $parameters = [])
+    public function execute($target,string $method, array $parameters = [])
     {
         $expression =  $this->buildPointcut(get_class($target),$method);
         $aspect = $this->matchAspect($expression,$method);
@@ -128,7 +97,7 @@ class AopManager
         return $aspect->doAdvice($target,$method,$parameters);
     }
 
-    protected function buildPointcut($clazz,$method)
+    protected function buildPointcut(string $clazz,string $method):string
     {
        return str_replace('\\','.',$clazz);
     }

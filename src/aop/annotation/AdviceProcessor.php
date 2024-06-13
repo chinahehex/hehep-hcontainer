@@ -9,7 +9,7 @@ use hehe\core\hcontainer\aop\base\Aspect;
 use hehe\core\hcontainer\base\Definition;
 
 /**
- * 切面处理器
+ * 切面注解处理器
  *<B>说明：</B>
  *<pre>
  * 基本概念:
@@ -19,10 +19,10 @@ class AdviceProcessor extends AnnotationProcessor
 {
 
     /**
-     * 通知点列表
+     * 切面集合
      *<B>说明：</B>
      *<pre>
-     *  基本格式:['类名'=>[['拦截点','位置','行为列表']]]
+     *  基本格式:['类名'=>[['拦截点表达式','通知点位置','行为列表']]]
      *</pre>
      * @var array
      */
@@ -84,13 +84,12 @@ class AdviceProcessor extends AnnotationProcessor
     public function endScanHandle()
     {
 
-        /** @var AopManager $aopManager */
         $hcontainer = $this->getContainerManager();
         $aopManager = $hcontainer->getAopManager();
         foreach ($this->aspects as $clazz=>$aspects) {
             foreach ($aspects as $aspect) {
                 list($pointcut,$advice,$behaviors) = $aspect;
-                $aopManager->addAspect($behaviors,$advice,$pointcut,$clazz);
+                $aopManager->addAspect($clazz,$pointcut,$advice,$behaviors);
             }
 
             // 更新bean代理状态

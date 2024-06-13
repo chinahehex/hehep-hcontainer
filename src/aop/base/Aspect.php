@@ -4,7 +4,7 @@ namespace hehe\core\hcontainer\aop\base;
 use Throwable;
 
 /**
- * aop 管理器
+ * aop 类切面
  *<B>说明：</B>
  *<pre>
  * 切面类
@@ -23,13 +23,20 @@ class Aspect
      * 通知点行为
      *<B>说明：</B>
      *<pre>
-     * 基本格式:['方法拦截点'=>['位置'=>'行为列表']]
+     * 基本格式:['方法拦截点'=>['通知点位置'=>'行为列表']]
      *</pre>
-     * @var AopBehavior[]
+     * @var array
      */
     protected $advices = [];
 
-
+    /**
+     * 通知点行为缓存
+     *<B>说明：</B>
+     *<pre>
+     * 基本格式:['目标方法'=>'行为集合']
+     *</pre>
+     * @var array
+     */
     protected $cache_method_advices = [];
 
 
@@ -37,10 +44,9 @@ class Aspect
      * 匹配规则
      * @param string $method
      */
-    public function matchAspect($method)
+    public function matchAspect(string $method):bool
     {
         $match_result = false;
-
         $behavior_list = [];
         foreach ($this->advices as $pointcut=>$advice) {
             if (($pointcut == $method) || (preg_match('/^' . $pointcut . '$/', $method) === 1)) {
@@ -66,15 +72,16 @@ class Aspect
 
 
     /**
-     * 通知点行为
+     * 添加通知点行为
      *<B>说明：</B>
      *<pre>
      * 基本格式:['通知点位置'=>'行为列表',]
      *</pre>
-     * @param string $advice
-     * @param AopBehavior[] AopBehavior
+     * @param string $advice 通知点
+     * @param array $behaviors 通知点行为列表
+     * @param string $pointcut 拦截点表达式
      */
-    public function addBehavior($advice,$behaviors = [],$pointcut = '')
+    public function addBehavior(string $advice,array $behaviors = [],string $pointcut = '')
     {
         if (is_string($behaviors)) {
             $behaviors = explode(',',$behaviors);
@@ -88,7 +95,16 @@ class Aspect
         }
     }
 
-    public function hasAdvice($method,$advice)
+    /**
+     * 验证目标方法在通知点上是否有行为
+     *<B>说明：</B>
+     *<pre>
+     * 略
+     *</pre>
+     * @param string $method 目标方法
+     * @param string $advice 通知点
+     */
+    public function hasAdvice(string $method,string $advice):bool
     {
         if (isset($this->cache_method_advices[$method][$advice])) {
             return true;
@@ -97,7 +113,16 @@ class Aspect
         }
     }
 
-    public function getAdviceBehaviors($method,$advice)
+    /**
+     * 获取目标方法在此通知点上的行为
+     *<B>说明：</B>
+     *<pre>
+     * 略
+     *</pre>
+     * @param string $method 目标方法
+     * @param string $advice 通知点
+     */
+    protected function getAdviceBehaviors(string $method,string $advice):?array
     {
         if (isset($this->cache_method_advices[$method][$advice])) {
             return $this->cache_method_advices[$method][$advice];
@@ -118,7 +143,7 @@ class Aspect
      * @return mixed
      * @throws Throwable
      */
-    public function doAdvice($target,$method, $parameters)
+    public function doAdvice($target,string $method, array $parameters)
     {
         $pointcutContext = new PointcutContext();
         $pointcutContext->target = $target;
@@ -172,14 +197,14 @@ class Aspect
 
 
     /**
-     * 执行行为
+     * 执行通知点行为
      *<B>说明：</B>
      *<pre>
      * 略
      *</pre>
      * @param PointcutContext $pointcutCtx
      */
-    protected function doBehaviors(PointcutContext $pointcutCtx)
+    protected function doBehaviors(PointcutContext $pointcutCtx):void
     {
 
         $behaviors = $this->getAdviceBehaviors($pointcutCtx->method,$pointcutCtx->advice);
@@ -190,11 +215,10 @@ class Aspect
         }
     }
 
-    protected function buildBehaviorHandler($handler)
+    protected function buildBehaviorHandler(string $handler):array
     {
 
         $handler = '\\' . str_replace(".","\\",$handler);
-
         $newClassStatus = false;
         if (strpos($handler,"@@") !== false) {
             list($handlerClass,$handlerMethod) = explode("@@",$handler);

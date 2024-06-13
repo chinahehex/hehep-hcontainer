@@ -47,16 +47,16 @@ class UserBean
      * 构造函数
      * @var RoleBean
      */
-    public $structureRole;
+    public $argRole;
 
     public $name;
 
     public $aop_log = '';
 
-    public function __construct($name = '')
+    public function __construct($name = '',RoleBean $argRole)
     {
-        //$this->structureRole = $role;
         $this->name = $name;
+        $this->argRole = $argRole;
     }
 
     public function ok()
