@@ -40,18 +40,8 @@ class AnnotationClass
      * @var AnnotationParser
      */
     protected $annotationParser;
-
-    /**
-     * 注解处理器
-     *<B>说明：</B>
-     *<pre>
-     *  略
-     *</pre>
-     * @var AnnotationProcessor[]
-     */
-    protected static $annotationProcessors;
-
-    public function __construct($clazz,annotationParser $annotationParser,AnnotationReader $annotationReader)
+    
+    public function __construct(string $clazz,annotationParser $annotationParser,AnnotationReader $annotationReader)
     {
         $this->clazz = $clazz;
         $this->annotationReader = $annotationReader;
@@ -81,7 +71,7 @@ class AnnotationClass
      *  略
      *</pre>
      */
-    protected function parseClassAnnotation()
+    protected function parseClassAnnotation():void
     {
         $classAnnotations  = $this->annotationReader->getClassAnnotations($this->reflectionClass);
         foreach ($classAnnotations as $myAnnotation) {
@@ -103,12 +93,11 @@ class AnnotationClass
      *  略
      *</pre>
      */
-    protected function parseMethodAnnotation()
+    protected function parseMethodAnnotation():void
     {
         $reflectionMethods = $this->reflectionClass->getMethods();
 
         foreach ($reflectionMethods as $reflectionMethod) {
-
             $annotationMethodList = $this->annotationReader->getMethodAnnotations($reflectionMethod);
             foreach ($annotationMethodList as $myAnnotation) {
                 $annotationMeta = $this->annotationParser->getAnnotationMeta($myAnnotation);
@@ -130,7 +119,7 @@ class AnnotationClass
      *  略
      *</pre>
      */
-    protected function parseAttributeAnnotation()
+    protected function parseAttributeAnnotation():void
     {
         $properties = $this->reflectionClass->getProperties();
         foreach ($properties as $propertie) {

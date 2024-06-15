@@ -5,7 +5,7 @@ use hehe\core\hcontainer\ContainerManager;
 use ReflectionClass;
 
 /**
- * 注解处理器类
+ * 注解处理器基类
  *<B>说明：</B>
  *<pre>
  * 略
@@ -39,7 +39,7 @@ class AnnotationProcessor
      * 所有注解器对象
      *<B>说明：</B>
      *<pre>
-     *  格式:['类名']['作用域'][]
+     *  格式:['类名']['注解类型'][]
      *</pre>
      * @var array
      */
@@ -73,7 +73,7 @@ class AnnotationProcessor
      *</pre>
      * @return array
      */
-    public function getClassAnnotations()
+    public function getClassAnnotations():array
     {
         return $this->classAnnotations;
     }
@@ -83,7 +83,7 @@ class AnnotationProcessor
      * @param object $annotation 注解类
      * @param string $clazz 类路径
      */
-    protected function collectClass($annotation,$clazz)
+    protected function collectClass($annotation,string $clazz):void
     {
         $this->annotationsors[$clazz]['class'][$clazz][] = $annotation;
     }
@@ -94,7 +94,7 @@ class AnnotationProcessor
      * @param string $clazz 类路径
      * @param string $attribute 属性名
      */
-    protected function collectAttribute($annotation,$clazz,$attribute)
+    protected function collectAttribute($annotation,string $clazz,string $attribute):void
     {
         $this->annotationsors[$clazz]['attribute'][$attribute][] = $annotation;
     }
@@ -105,7 +105,7 @@ class AnnotationProcessor
      * @param string $clazz 类路径
      * @param string $method 类方法
      */
-    protected function collectMethod($annotation,$clazz,$method)
+    protected function collectMethod($annotation,string $clazz,string $method):void
     {
         $this->annotationsors[$clazz]['method'][$method][] = $annotation;
     }
@@ -193,7 +193,7 @@ class AnnotationProcessor
      * @param string $clazz
      * @param string $attribute
      */
-    public function handlerAttribute($annotation,$clazz,$attribute)
+    public function handlerAttribute($annotation,string $clazz,string $attribute)
     {
         $shortName = $this->getAnnotationShortName($annotation);
         $annotationHandlerMethod = 'annotationHandlerAttribute';
@@ -218,7 +218,7 @@ class AnnotationProcessor
      * @param string $clazz
      * @param string $method
      */
-    public function handlerMethod($annotation,$clazz,$method)
+    public function handlerMethod($annotation,string $clazz,string $method)
     {
         $shortName = $this->getAnnotationShortName($annotation);
         $annotationHandlerMethod = 'annotationHandlerMethod';
@@ -245,7 +245,7 @@ class AnnotationProcessor
      * @param string $attribute
      * @return array
      */
-    protected function getAttribute($annotation,$class = '',$method = '',$attribute = '')
+    protected function getAttribute($annotation,string $class = '',string $method = '',string $attribute = '')
     {
         $values = [];
 

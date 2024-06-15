@@ -2,7 +2,6 @@
 namespace hehe\core\hcontainer\annotation;
 
 use hehe\core\hcontainer\ann\base\AnnotationProcessor;
-use hehe\core\hcontainer\base\Definition;
 
 /**
  * Bean注解处理器
@@ -18,18 +17,6 @@ class BeanProcessor extends AnnotationProcessor
 
     protected $annotationHandlerMap = [
         'Ref'=>'refHandler'
-    ];
-
-    protected $attrsMap = [
-        'scope'=>'_scope',
-        'ref'=>'_ref',
-        'class'=>'class',
-        'single'=>'_single',
-        'init'=>'_init',
-        'args'=>'_args',
-        'attrs'=>'_attrs',
-        'onProxy'=>'_onProxy',
-        'proxyHandler'=>'_proxyHandler',
     ];
 
     public function formatBeanAnnotationValues($annotationValues,$clazz)
@@ -74,9 +61,10 @@ class BeanProcessor extends AnnotationProcessor
 
     public function refHandler($annotation,$clazz,$attribute)
     {
-        $annotationValues = $this->getAttribute($annotation);
+
+        //$annotationValues = $this->getAttribute($annotation);
         $attributeValues = [
-            $attribute=>Definition::formatRef($annotationValues['ref']),
+            $attribute=>$annotation,
         ];
 
         $beanValues = $this->formatBeanAnnotationValues($attributeValues,$clazz);

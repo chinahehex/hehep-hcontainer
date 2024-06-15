@@ -1,7 +1,11 @@
 # hehep-hcontainer
 
 ## 介绍
-- hehep-hcontainer 是一个 di 容器,提供类的实例化,对象属性依赖注入,AOP 拦截,容器文件扫描,等等功能
+- hehep-hcontainer 是一个 di容器,提供类的实例化工具组件
+- 支持解析注解
+- 支持类属性,构造参数依赖注入
+- 支持AOP切面
+- 支持Bean作用域
 
 ## 安装
 - 直接下载:
@@ -44,7 +48,7 @@ $beanDefinition = [
 ];
 ```
 
-### 注解的方式定义bean
+### 注解定义bean
 - 注解说明
 ```
 通过@bean注解器对bean进行描述,注解器属性与"常规定义Bean"一致
@@ -79,7 +83,7 @@ class UserBean
 }
 ```
 
-### 注册bean
+### 注册Bean
 ```php
 use hehe\core\hcontainer\ContainerManager;
 $hcontainer = new ContainerManager();
@@ -99,7 +103,7 @@ $hcontainer->batchRegister($beans);
 
 ```
 
-### 实例化bean
+### 实例化Bean
 ```php
 use hehe\core\hcontainer\ContainerManager;
 $hcontainer = new ContainerManager();
@@ -149,7 +153,12 @@ class App
 $app = new App($hcontainer);
 
 // 设置作用域容器事件
-$hcontainer->setScopeHandler(['request'=>function()use($app){
+$hcontainer->setScopeHandler('request',function()use($app){
+    return $app->container;
+});
+
+// 或者
+$hcontainer->setScopeHandlers(['request'=>function()use($app){
     return $app->container;
 }]);
 
@@ -170,7 +179,10 @@ unset($app);
 ### 构造函数注入
 - 说明
 ```
-
+构造函数参数有三种方式注入Bean
+方式1:定义参数类型为Bean类
+方式2:参数变量默认值为<ref:xxxx>,xxx 为指定的bean标识
+方式3:参数变量默认值为<lazy:xxxx>,xxx 为指定的bean标识
 ```
 
 - 示例代码
@@ -199,13 +211,27 @@ class UserBean
      * 角色对象
      * @var RoleBean
      */
-    public $role;
+    public $argRole;
+    
+     /**
+     * 角色对象
+     * @var RoleBean
+     */
+    public $argRefRole;
+    
+    /**
+     * 角色对象
+     * @var RoleBean
+     */
+    public $argLazyRole;
     
     // 如RoleBean 配置过bean,则系统会自动从容器中获取RoleBean对象传入
-    public function __construct($name,RoleBean $argRole)
+    public function __construct($name,RoleBean $argRole,$argRefRole = '<ref:role>',$argLazyRole = '<lazy:role>')
     {
         $this->name = $name;
-        $this->role = $argRole;
+        $this->argRole = $argRole;
+        $this->argRefRole = $argRefRole;
+        $this->argLazyRole = $argLazyRole;
     }
 }
 
@@ -329,8 +355,121 @@ $beans = [
 
 ```
 
+
+
+### Bean代理
+- 说明
+```
+代理概念:在用户端与目标类之间插入一个中间类,用户端通过中间类操作目标类(中间类继承目标类,中间类删除所有属性,重写目标类所有方法)
+代理流程:
+    开启代理后,先创建代理类对象存储在容器中,当在调用代理方法或使用属性时都触发目标类对象的创建，目标对象存储在“代理事件”对象中,
+    基本流程:客户端->代理类->代理事件->创建目标对象->目标方法
+    AOP基本流程:客户端->代理类->代理事件->创建目标对象->AOP切面->目标方法
+开启代理:Bean定义配置_onProxy=true,AOP相关注解(After,Before等等),延迟注入(lazy),即会自动进入代理模式
+解决问题:代理模式实现AOP切面功能,间接实现了"延迟注入",解决了相互依赖导致的死循环问题
+```
+
+- Bean定义代理示例代码
+```php
+// Bean 定义
+$benans =  [
+    ['user'=>['class'=>'user\service\user','_onProxy'=>true]]
+];
+
+```
+
+- Bean注解代理示例代码
+```php
+use hehe\core\hcontainer\annotation\Bean;
+/**
+ * @bean("user",_onProxy=true)
+ */
+class UserBean
+{
+
+}
+
+```
+
+- AOP注解代理示例代码
+```php
+use hehe\core\hcontainer\annotation\Bean;
+use hehe\core\hcontainer\aop\annotation\After;
+
+/**
+ * @bean("user")
+ * @After("hcontainer\tests\common\LogBehavior@log",pointcut=".+Action")
+ */
+class UserBean
+{
+    
+    /**
+     * @After("hcontainer\tests\common\LogBehavior")
+     */
+    public function doAfter(){}
+}
+```
+
+- 延迟注入代理示例代码
+```php
+use hehe\core\hcontainer\annotation\Bean;
+use hehe\core\hcontainer\annotation\Ref;
+
+/**
+ * @bean("user")
+ */
+class UserBean
+{
+    
+    /**
+     * 注解
+     * @Ref("role","lazy"=>true)
+     * @var RoleBean
+     */
+    public $annRole;
+}
+```
+
+### 延迟注入
+- 说明
+```
+由于在注入的过程中,容易出现相互依赖而导致的死循环问题,采用延迟注入的方式可以解决此问题,
+延迟注入会自动开启代理模式,如果Bean已经开代理模式，注入的是Bean单例代理对象,如Bean 未开启代理模式,则创建新的代理对象
+```
+
+- 示例代码
+```php
+
+// bean 定义
+$beans = [
+    'user'=>[
+       'class'=>'user\service\user',
+       'name'=>'公司地址',
+       'role1'=>'<ref::role>'
+     ],
+     
+    'role'=>[
+       'class'=>'user\service\Role',
+       'user'=>'<lazy::user>'
+    ]
+];
+
+use hehe\core\hcontainer\annotation\Ref;
+// 注解方式
+class RoleBean
+{
+    /**
+     * @Ref("user",lazy=true)
+     * @var UserBean
+     */
+    public $user;
+    
+}
+
+```
+
 ## 容器扫描及注解
-- 容器扫描说明
+- 说明
 ```
 开启扫描后,程序会自动查找指定命名空间下的所有类文件,并收集注解信息,同时将收集到的注解信息交给对应的注解处理器来处理业务，
 比如与bean相关的注解Bean,Ref都被指定由"hehe\core\hcontainer\annotation\BeanProcessor"处理

@@ -60,7 +60,7 @@ class ContainerManager
      *</pre>
      * @var \hehe\core\hcontainer\aop\AopManager
      */
-    protected $aopManager = null;
+    protected $aopManager;
 
     /**
      * 是否开启注解扫描
@@ -80,7 +80,7 @@ class ContainerManager
      *</pre>
      * @var \hehe\core\hcontainer\ann\AnnotationManager
      */
-    protected $annManager = null;
+    protected $annManager;
 
     /**
      * 扫描规则定义
@@ -166,14 +166,9 @@ class ContainerManager
     public function __construct($attrs = [])
     {
         if (!empty($attrs)) {
-            $this->_init($attrs);
-        }
-    }
-
-    protected function _init($attrs)
-    {
-        foreach ($attrs as $attr=>$value) {
-            $this->$attr = $value;
+            foreach ($attrs as $attr=>$value) {
+                $this->$attr = $value;
+            }
         }
     }
 
@@ -200,12 +195,12 @@ class ContainerManager
 
     /**
      * 添加扫描规则
-     * @param mixed ...$scanPaths
+     * @param mixed ...$scanRules
      * @return $this
      */
-    public function addScanRule(...$scanPaths):self
+    public function addScanRule(...$scanRules):self
     {
-        $this->getAnnManager()->addScanRule(...$scanPaths);
+        $this->getAnnManager()->addScanRule(...$scanRules);
 
         return $this;
     }
@@ -216,25 +211,12 @@ class ContainerManager
      *<pre>
      *  略
      *</pre>
-     * @param array<命名空间,命名空间文件路径> $scanPaths 扫描路径
+     * @param array<命名空间,命名空间文件路径> $scanRules 扫描路径
      * @return static
      */
-    public function addFirstScanRule(...$scanPaths):self
+    public function addFirstScanRule(...$scanRules):self
     {
-        $this->getAnnManager()->addFirstScanRule(...$scanPaths);
-    }
-
-    /**
-     * 注册处理器
-     *<B>说明：</B>
-     *<pre>
-     *  略
-     *</pre>
-     * @param Processor $processor
-     */
-    public function addProcessor($processor):self
-    {
-        $this->getAnnManager()->addProcessor($processor);
+        $this->getAnnManager()->addFirstScanRule(...$scanRules);
 
         return $this;
     }
@@ -275,9 +257,14 @@ class ContainerManager
         return $this;
     }
 
-    public function setScopeHandler($scopeHandlers)
+    public function setScopeHandlers($scopeHandlers):void
     {
         $this->scopeHandlers = $scopeHandlers;
+    }
+
+    public function setScopeHandler(string $scope,$handler):void
+    {
+        $this->scopeHandlers[$scope] = $handler;
     }
 
     /**
@@ -289,7 +276,7 @@ class ContainerManager
      * @param string $scope 作用域
      * @return Container
      */
-    public function getScopeContainer($scope)
+    public function getScopeContainer(string $scope = ''):Container
     {
 
         if (!isset($this->scopeHandlers[$scope])) {
@@ -316,7 +303,7 @@ class ContainerManager
      * @param Container $scope 容器作用域
      * @return Container
      */
-    public function makeContainer($scope)
+    public function makeContainer(string $scope = ''):Container
     {
         return new Container($scope);
     }

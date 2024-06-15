@@ -22,7 +22,7 @@ class UserBean
      * 姓名
      * @var
      */
-    public $real_name;
+    public $real_name = '';
 
     /**
      * 密码
@@ -53,7 +53,13 @@ class UserBean
 
     public $aop_log = '';
 
-    public function __construct($name = '',RoleBean $argRole)
+    /**
+     * @ref("userLog")
+     * @var UserLog
+     */
+    public $userLog;
+
+    public function __construct($name = '',$argRole = '<ref::role>')
     {
         $this->name = $name;
         $this->argRole = $argRole;
@@ -64,12 +70,12 @@ class UserBean
         return true;
     }
 
-    public function getName()
+    public function getName():?string
     {
         return $this->name;
     }
 
-    public function getRealname()
+    public function getRealname():string
     {
         return $this->real_name;
     }
@@ -83,7 +89,7 @@ class UserBean
      * 注册用户
      * @After("hcontainer\tests\common\LogBehavior")
      */
-    public function doAfter($user,$msg = '')
+    public function doAfter(UserBean $user,string $msg = '')
     {
         return $msg;
     }
@@ -133,14 +139,24 @@ class UserBean
         return $msg;
     }
 
-    public function do1Action($user,$msg = '')
+    public function do1Action(?UserBean $user,$msg = '')
     {
         return $msg;
     }
 
-    public function do2Action($user,$msg = '')
+    public function do2Action(UserBean $user,$msg = '')
     {
         return $msg;
+    }
+
+    public function getUser():?RoleBean
+    {
+        return $this->argRole;
+    }
+
+    public function dp3Action(...$users)
+    {
+
     }
 
 

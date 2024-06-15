@@ -1,19 +1,13 @@
 <?php
 namespace hcontainer\tests\common;
 use hehe\core\hcontainer\annotation\Bean;
-use hehe\core\hcontainer\aop\annotation\After;
 
 /**
  *
- * Class UserBean
- * @package hcontainer\tests\common
- * @bean("log")
- * @After("hcontainer\tests\common\LogBehavior@log",pointcut=".+Action")
+ * @bean("userLog")
  */
-class Log extends BaseLog
+class UserLog extends BaseLog
 {
-    public $attr_ok;
-    public $attr_ok1;
 
     /**
      * @var UserBean

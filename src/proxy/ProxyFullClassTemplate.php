@@ -23,7 +23,7 @@ class ProxyFullClassTemplate
      * @param string $proxyClassName 代理类名称
      * @return string
      */
-    static public function build($className,$proxyClassName)
+    public static  function build($className,$proxyClassName)
     {
 
         $reflectionClass = new \ReflectionClass($className);
@@ -31,14 +31,46 @@ class ProxyFullClassTemplate
 
         // 定义代理类名,以及对应的代理事件属性名称
         $id = \uniqid('', false);
-        $handlerPropertyName = '__handler' . $id;
-
+        $handlerPropertyName = 'handler' . $id;
         $proxyClassTemplate = "class $proxyClassName extends $className{
-            private \$$handlerPropertyName;
+            private \${$handlerPropertyName};
             public function __construct(\$handler)
             {
                 \$this->{$handlerPropertyName} = \$handler;
-            }";
+                
+                foreach (array_keys(get_object_vars(\$this)) as \$name) {
+                    if (\$name !== '{$handlerPropertyName}') {
+                        unset(\$this->\$name);
+                    }
+                }
+                
+            }
+            public function __get(\$name)
+            {
+                \$bean = \$this->{$handlerPropertyName}->getInstance();
+                return \$bean->\$name;
+            }
+            
+            public function __set(\$name,\$value)
+            {
+                \$bean = \$this->{$handlerPropertyName}->getInstance();
+                \$bean->\$name = \$value;
+            }
+            
+            public function __isset(\$name)
+            {
+                \$bean = \$this->{$handlerPropertyName}->getInstance();
+                return isset(\$bean->\$name);
+            }
+            
+            public function __unset(\$name)
+            {
+                \$bean = \$this->{$handlerPropertyName}->getInstance();
+                unset(\$bean->\$name);
+            }
+            
+            ";
+
 
         // Methods
         $proxyClassTemplate .= self::buildMethodTemplate($reflectionMethods, $handlerPropertyName);
@@ -67,6 +99,12 @@ class ProxyFullClassTemplate
                 continue;
             }
 
+            $return_type_code = '';
+            if ($reflectionMethod->hasReturnType()) {
+                $refReturnType = $reflectionMethod->getReturnType();
+                $return_type_code = $refReturnType->allowsNull() ? ':?' . (string)$refReturnType : ':' . (string)$refReturnType;
+            }
+
             // 方法体
             $methodBody = "{
                 return \$this->{$proxyHandlerPropertyName}->invoke('{$methodName}', func_get_args());
@@ -76,7 +114,7 @@ class ProxyFullClassTemplate
             $methodsTemplate = "";
             $methodsTemplate .= " public function $methodName (";
             $methodsTemplate .= self::buidlMethodParamsTemplate($reflectionMethod);
-            $methodsTemplate .= ' ) ';
+            $methodsTemplate .= ')' . $return_type_code;
             $methodsTemplate .= $methodBody;
 
             $methods[] = $methodsTemplate;
@@ -100,11 +138,10 @@ class ProxyFullClassTemplate
         $params = [];
         foreach ($reflectionParameters as $reflectionParameter) {
             // 参数类型(\ReflectionMethod $reflectionMethod)
-            $type = $reflectionParameter->getType();
-            $typeName = "";
-            if ($type !== null) {
-                $type = $type->__toString();
-                $typeName = " $type ";
+            $type_name = "";
+            if ($reflectionParameter->hasType()) {
+                $var_type = $reflectionParameter->getType();
+                $type_name = $var_type->allowsNull() ? "?" . (string)$var_type : (string)$var_type;
             }
 
             $methodParameterName = $reflectionParameter->getName();
@@ -122,7 +159,7 @@ class ProxyFullClassTemplate
                 $parameterDefaultValue = self::formatParameterDefaultValue($reflectionParameter);
             }
 
-            $params[] = "{$typeName}{$paramName}{$parameterDefaultValue}";
+            $params[] = "{$type_name}{$paramName}{$parameterDefaultValue}";
         }
 
         return implode(',',$params);

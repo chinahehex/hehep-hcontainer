@@ -1,5 +1,6 @@
 <?php
 namespace hcontainer\tests\units;
+use hcontainer\tests\common\Log;
 use hcontainer\tests\common\UserBean;
 use hcontainer\tests\common\UserinfoBean;
 use hcontainer\tests\TestCase;
@@ -16,6 +17,7 @@ class BeanTest extends TestCase
             ->startScan();
 
     }
+
 
     public function testRegister()
     {
@@ -89,4 +91,42 @@ class BeanTest extends TestCase
         $user = $this->hcontainer->getBean('user');
         $this->assertTrue($user->argRole->ok());
     }
+
+    public function testLazy()
+    {
+        $user = $this->hcontainer->getBean('user');
+        $this->assertTrue($user->argRole->lazy("lazy") == 'lazy');
+
+        $this->assertTrue($user->argRole->role_name == '延迟角色');
+
+        $user->argRole->role_name = '难搞';
+        $this->assertTrue($user->argRole->role_name == '难搞');
+
+        unset($user->argRole->role_name);
+        $this->assertTrue($user->argRole->role_name == null);
+
+    }
+
+    public function testproxy()
+    {
+
+        $log = $this->hcontainer->getBean('log');
+        $this->assertTrue($log->ok("msg") == "msg");
+
+
+        $user = $this->hcontainer->getBean('user');
+
+        $this->assertTrue(spl_object_hash($user)==spl_object_hash($log->user));
+    }
+
+    public function testProxyLazy()
+    {
+
+        $user = $this->hcontainer->getBean('user');
+        $userLog = $this->hcontainer->getBean('userLog');
+
+
+        $this->assertTrue(spl_object_hash($user->userLog)==spl_object_hash($userLog));
+    }
+
 }

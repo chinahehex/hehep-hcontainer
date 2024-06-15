@@ -30,4 +30,4 @@ class AopProxyHandler extends ProxyHandler
         return $aopManager->execute($this->target,$method,$parameters);
     }
 
-}
+}   

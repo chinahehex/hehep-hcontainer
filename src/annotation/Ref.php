@@ -10,6 +10,8 @@ class Ref
 {
     public $ref;
 
+    public $lazy = false;
+
     /**
      * 构造方法
      *<B>说明：</B>

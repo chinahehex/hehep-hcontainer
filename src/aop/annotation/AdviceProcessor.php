@@ -96,7 +96,7 @@ class AdviceProcessor extends AnnotationProcessor
             $beanId = $hcontainer->getBeanId($clazz);
             $hcontainer->appendComponent($beanId,[
                 Definition::SYS_ATTR_ONPROXY=>true,
-                Definition::SYS_ATTR_PROXYHANDLER=>AopProxyHandler::class,
+                //Definition::SYS_ATTR_PROXYHANDLER=>AopProxyHandler::class,
                 Definition::SYS_ATTR_CLASS=>$clazz,
             ]);
         }

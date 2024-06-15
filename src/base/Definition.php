@@ -2,8 +2,10 @@
 namespace hehe\core\hcontainer\base;
 
 use Exception;
+use hehe\core\hcontainer\annotation\Ref;
 use hehe\core\hcontainer\ContainerManager;
 use hehe\core\hcontainer\proxy\BeanProxy;
+use hehe\core\hcontainer\proxy\ProxyHandler;
 use ReflectionClass;
 
 /**
@@ -17,7 +19,7 @@ class Definition
 {
 
     const PARAMS_REGEX =  '/<(.+)::([^>]+)?>/';
-    const BEAN_REF_REGEX =  '/<ref::([^>]+)?>/';
+    const BEAN_REF_REGEX =  '/^<(ref|lazy)::([^>]+)?>/';
     const PARAMS_SPLIT_CHARACTER = '|';
     const SYS_ATTR_ONPROXY = '_onProxy';
     const SYS_ATTR_PROXYHANDLER = '_proxyHandler';
@@ -43,7 +45,7 @@ class Definition
      *  略
      *</pre>
      */
-    protected static $sysAttr = ['_attrs','_scope','_ref','_func','class','_single','_init','_args','_onProxy','_proxyHandler'];
+    protected static $sysAttr = ['_attrs','_scope','_ref','_lazy','_func','class','_single','_init','_args','_onProxy','_proxyHandler'];
 
     /**
      * 调用其他的bean对象
@@ -146,9 +148,15 @@ class Definition
      */
     protected $_single = true;
 
-    protected $formatArgs = null;
+    /**
+     * 懒代理标识
+     * @var bool
+     */
+    protected $_lazy = false;
 
-    protected $formatAttrs = null;
+    protected $_formatArgs = null;
+
+    protected $_formatAttrs = null;
 
     /**
      * @var ContainerManager
@@ -200,12 +208,12 @@ class Definition
     }
 
 
-    public function getId():string
+    public function getId():?string
     {
         return $this->_id;
     }
 
-    public function getRef():string
+    public function getRef():?string
     {
         return $this->_ref;
     }
@@ -215,14 +223,17 @@ class Definition
         return $this->class;
     }
 
-    public function setSingle(bool $single = true):void
-    {
-        $this->_single = $single;
-    }
-
     public function isSingle():bool
     {
         return $this->_single;
+    }
+
+    /**
+     * 是否有代理
+     */
+    public function hasProxy():bool
+    {
+        return $this->_onProxy;
     }
 
     public function getScope():string
@@ -260,7 +271,17 @@ class Definition
     public function make(array $args = [])
     {
         if ($this->_ref != null) {
-            return $this->getContainerManager()->getBean($this->_ref);
+            if ($this->_lazy) {
+                $ref_definition = $this->getContainerManager()->getDefinition($this->_ref);
+                if ($ref_definition->hasProxy()){
+                    return $this->getContainerManager()->getBean($this->_ref);
+                } else {
+                    // 创建一个新的代理
+                    return $ref_definition->createProxy($args);
+                }
+            } else {
+                return $this->getContainerManager()->getBean($this->_ref);
+            }
         } else if ($this->_func != null) {
             if ($this->_func instanceof \Closure) {
                 return call_user_func($this->_func);
@@ -268,61 +289,62 @@ class Definition
                 return call_user_func_array($this->_func[0],$this->_func[1]);
             }
         } else {
-            try {
-                // 创建对象
-                $classReflection = $this->getReflection();
-                $parameters = $this->buildArgs($args);
-                $object = $classReflection->make($parameters);
-                // 设置其他属性
-                if ($this->_attrs != null) {
-                    $this->buildAttrs();
-                    foreach ($this->formatAttrs as $name=>$value) {
-                        $object->$name = $value;
-                    }
-                }
-
-                // 调用类对象初始化方法
-                if (!is_null($this->_init)) {
-                    call_user_func([$object,$this->_init]);
-                }
-
-                // 生成代理类
-                if ($this->_onProxy) {
-                    $object = $this->makeProxyBean($object);
-                }
-
-                return $object;
-            } catch (Exception $e) {
-                throw $e;
+            // 生成代理类
+            if ($this->_onProxy) {
+                $object = $this->createProxy($args);
+            } else {
+                $object = $this->createObject($args);
             }
+
+            return $object;
         }
     }
 
     /**
-     * 创建代理对象
-     *<B>说明：</B>
-     *<pre>
-     *  略
-     *</pre>
-     * @param object $object 构造参数
+     * 创建bean 对象
+     * @param array $args
      * @return object
-     * @throws Exception proxyHandler no find;
      */
-    protected function makeProxyBean($object)
+    public function createObject(array $args = [])
     {
-
-        // 创建事件类
-        if ($this->_proxyHandler === null || !class_exists($this->_proxyHandler)) {
-            return $object;
+        // 创建对象
+        $classReflection = $this->getReflection();
+        $parameters = $this->buildArgs($args);
+        $object = $classReflection->make($parameters);
+        // 设置其他属性
+        if ($this->_attrs != null) {
+            $this->buildAttrs();
+            foreach ($this->_formatAttrs as $name=>$value) {
+                $object->$name = $value;
+            }
         }
-        $proxyHandlerReflection =  new ReflectionClass($this->_proxyHandler);
-        /**@var \hehe\core\hcontainer\proxy\ProxyHandler $proxyHandler*/
-        $proxyHandler = $proxyHandlerReflection->newInstance($object);
-        $proxyHandler->setContainerManager($this->getContainerManager());
 
-        $object = BeanProxy::make(get_class($object),$proxyHandler);
+        // 调用类对象初始化方法
+        if (!is_null($this->_init)) {
+            call_user_func([$object,$this->_init]);
+        }
 
         return $object;
+    }
+
+
+    protected function createProxy(array $args = [])
+    {
+        // 创建事件类
+        if ($this->_proxyHandler == null) {
+            $this->_proxyHandler = ProxyHandler::class;
+        }
+
+        $proxyHandlerReflection =  new ReflectionClass($this->_proxyHandler);
+        /**@var \hehe\core\hcontainer\proxy\ProxyHandler $proxyHandler*/
+        $proxyHandler = $proxyHandlerReflection->newInstance($args);
+        $proxyHandler->definition = $this;
+
+        $proxyClassName = BeanProxy::buildProxyClass($this->class);
+        // 创建代理对象
+        $newRc = new ReflectionClass($proxyClassName);
+
+        return $newRc->newInstance($proxyHandler);
     }
 
     /**
@@ -336,11 +358,11 @@ class Definition
      */
     protected function buildArgs(array $args):array
     {
-        if (is_null($this->formatArgs)) {
-            $this->formatArgs = $this->buildParams($this->_args);
+        if (is_null($this->_formatArgs)) {
+            $this->_formatArgs = $this->buildParams($this->_args);
         }
 
-        $parameters = $this->formatArgs;
+        $parameters = $this->_formatArgs;
         // 合并参数
         if (!empty($args)) {
             foreach ($args as $index => $param) {
@@ -360,8 +382,8 @@ class Definition
      */
     protected function buildAttrs():void
     {
-        if (is_null($this->formatAttrs)) {
-            $this->formatAttrs = $this->buildParams($this->_attrs);
+        if (is_null($this->_formatAttrs)) {
+            $this->_formatAttrs = $this->buildParams($this->_attrs);
         }
     }
 
@@ -401,22 +423,28 @@ class Definition
                 $value = $this->buildParams($value);
             } else {
                 if ($value instanceof Definition) {
-                    $value = $value->make([]);
+                    $value = $value->make();
                 } else {
                     if (is_string($value)) {
                         if (preg_match(static::BEAN_REF_REGEX, $value, $match) ) {
-                            $funcName = $match[1];
-                            $definition = new Definition(['_ref'=>$funcName]);
-                            $definition->setContainerManager($this->getContainerManager());
-                            $value = $definition->make([]);
+                            $ref_type = $match[1];
+                            if ($ref_type === 'lazy') {
+                                $definition = $this->newDefinition(['_ref'=>$match[2],'_lazy'=>true]);
+                            } else {
+                                $definition = $this->newDefinition(['_ref'=>$match[2]]);
+                            }
+
+                            $value = $definition->make();
                         } else if (preg_match(static::PARAMS_REGEX, $value, $match)) {
-                            $funcName = $match[1];
-                            $funcParams = $match[2];
-                            $funcParams = explode(static::PARAMS_SPLIT_CHARACTER,$funcParams);
-                            $definition = new Definition(['_func'=>[$funcName,$funcParams]]);
-                            $definition->setContainerManager($this->getContainerManager());
-                            $value = $definition->make([]);
+                            $func_name = $match[1];
+                            $func_params = $match[2];
+                            $func_params_arr = explode(static::PARAMS_SPLIT_CHARACTER,$func_params);
+                            $definition = $this->newDefinition(['_func'=>[$func_name,$func_params_arr]]);
+                            $value = $definition->make();
                         }
+                    } else if ($value instanceof Ref) {
+                        $definition = $this->newDefinition(['_ref'=>$value->ref,'_lazy'=>$value->lazy]);
+                        $value = $definition->make();
                     }
                 }
             }
@@ -425,11 +453,6 @@ class Definition
         }
 
         return $params;
-    }
-
-    public static function formatRef($ref)
-    {
-        return '<ref::' . $ref . '>';
     }
 
     /**
@@ -480,5 +503,14 @@ class Definition
     private function isAssoc($array)
     {
         return array_keys($array) !== range(0, count($array) - 1);
+    }
+
+    public function newDefinition(array $attrs = []):self
+    {
+        $definition  = new static($attrs);
+
+        $definition->setContainerManager($this->getContainerManager());
+
+        return $definition;
     }
 }

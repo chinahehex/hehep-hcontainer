@@ -28,9 +28,7 @@ class Scan
      *</pre>
      * @var array
      */
-    protected $scanRule = [
-
-    ];
+    protected $scanRules = [];
 
     /**
      * 扫描规则配置对象列表
@@ -43,16 +41,6 @@ class Scan
     protected $scanRuleList = [];
 
     /**
-     * 扫描事件处理器对象列表
-     *<B>说明：</B>
-     *<pre>
-     * 略
-     *</pre>
-     * @var ScanHandler[]
-     */
-    private $scanHandlers = [];
-
-    /**
      * 构造方法
      *<B>说明：</B>
      *<pre>
@@ -60,24 +48,11 @@ class Scan
      *</pre>
      *
      */
-    public function __construct($scanRule)
+    public function __construct(array $scanRules)
     {
-        $this->scanRule = $scanRule;
+        $this->scanRules = $scanRules;
 
         $this->_init();
-    }
-
-    /**
-     * 注册扫码事件处理器
-     *<B>说明：</B>
-     *<pre>
-     *  略
-     *</pre>
-     * @param ScanHandler $scanHandler
-     */
-    public function registerHandler($scanHandler)
-    {
-        $this->scanHandlers[] = $scanHandler;
     }
 
     /**
@@ -89,7 +64,7 @@ class Scan
      */
     protected function _init()
     {
-        foreach ($this->scanRule as $rule) {
+        foreach ($this->scanRules as $rule) {
             $ruleClazz = ScanRule::class;
             if (isset($rule['class'])) {
                 $ruleClazz = $rule['class'];
@@ -136,7 +111,7 @@ class Scan
     {
         $fileClazzList = [];
         foreach ($this->scanRuleList as $scanRule) {
-            $this->doScanResource($scanRule,$fileClazzList);
+            $this->doScanResource($scanRule,'',$fileClazzList);
         }
 
 
@@ -155,7 +130,7 @@ class Scan
     public function scanClassByRule($scanRule)
     {
         $fileClazzList = [];
-        $this->doScanResource($scanRule,$fileClazzList);
+        $this->doScanResource($scanRule,'',$fileClazzList);
 
         return $fileClazzList;
     }
@@ -178,7 +153,7 @@ class Scan
         ]);
 
         $fileClazzList = [];
-        $this->doScanResource($scanRule,$fileClazzList);
+        $this->doScanResource($scanRule,'',$fileClazzList);
 
         return $fileClazzList;
     }
@@ -190,10 +165,10 @@ class Scan
      *  略
      *</pre>
      * @param ScanRule $scanRule 扫描规则
-     * @param array $fileClazzList 类文件列表
      * @param string $dirName 读取的目录名称
+     * @param array $fileClazzList 类文件列表
      */
-    protected function doScanResource($scanRule,&$fileClazzList,$dirName = '')
+    protected function doScanResource($scanRule,$dirName = '',&$fileClazzList)
     {
         if (!empty($dirName)) {
             $baseResourcePath = $scanRule->getBasePath() . DIRECTORY_SEPARATOR . $dirName;
@@ -214,7 +189,7 @@ class Scan
             $filePath = $baseResourcePath . DIRECTORY_SEPARATOR . $filename;
             if (is_dir($filePath)) {
                 // 继续扫描
-                $this->doScanResource($scanRule,$fileClazzList,!empty($dirName) ? $dirName . DIRECTORY_SEPARATOR . $filename : $filename);
+                $this->doScanResource($scanRule,!empty($dirName) ? $dirName . DIRECTORY_SEPARATOR . $filename : $filename,$fileClazzList);
             } else {
                 if ($scanRule->check($filePath)) {
                     $classNamespace = $scanRule->getBaseNamespace() . '\\' . str_replace(DIRECTORY_SEPARATOR,'\\',$dirName) . '\\' . basename($filename,".php");;

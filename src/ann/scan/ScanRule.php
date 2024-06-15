@@ -47,12 +47,12 @@ class ScanRule
         }
     }
 
-    public function getBasePath()
+    public function getBasePath():string
     {
         return $this->path;
     }
 
-    public function getBaseNamespace()
+    public function getBaseNamespace():string
     {
         return $this->namespace;
     }
@@ -66,7 +66,7 @@ class ScanRule
      * @param string $clazzPath
      * @return boolean true 表示满足规则 false 不满足
      */
-    public function check($clazzPath)
+    public function check($clazzPath):bool
     {
         if ($this->isPhpFile($clazzPath)) {
             return true;
@@ -84,7 +84,7 @@ class ScanRule
      * @param string $clazzPath
      * @return boolean
      */
-    protected function isPhpFile($clazzPath)
+    protected function isPhpFile($clazzPath):bool
     {
         $ext = strrchr($clazzPath,'.');
         if ($ext == '.php') {

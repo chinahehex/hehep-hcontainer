@@ -4,12 +4,13 @@ namespace hehe\core\hcontainer\ann;
 use hehe\core\hcontainer\ann\base\AnnotationParser;
 use hehe\core\hcontainer\ann\base\AnnotationProcessor;
 use hehe\core\hcontainer\ann\scan\Scan;
+use hehe\core\hcontainer\ContainerManager;
 
 /**
- * 注解管理
+ * 注解管理器
  *<B>说明：</B>
  *<pre>
- * 容器应用基本流程：扫描指定的目录,收集注解信息,注解信息注入容器
+ * 控制扫描的基本流程：指定扫描目录,收集注解信息,注解信息处理
  *</pre>
  */
 class AnnotationManager
@@ -22,7 +23,7 @@ class AnnotationManager
      *</pre>
      * @var Scan
      */
-    protected $scan = null;
+    protected $scan;
 
     /**
      * 扫描规则
@@ -40,19 +41,19 @@ class AnnotationManager
      *<pre>
      *  略
      *</pre>
-     * @var Processor[]|AnnotationProcessor[]
+     * @var AnnotationProcessor[]
      */
     protected $processorList = [];
 
     /**
-     * 自定义处理器集合
+     * 重写处理器集合
      *<B>说明：</B>
      *<pre>
-     *  由于替换旧的注解处理器
+     *  用新注解处理替换旧的注解处理器
      *</pre>
      * @var array<旧注解器类,新注解处理器类>
      */
-    public $customProcessors = [];
+    protected $customProcessors = [];
 
     /**
      * 优先处理的注解处理器
@@ -62,7 +63,7 @@ class AnnotationManager
      *</pre>
      * @var array<注解类处理器>
      */
-    public $firstProcessors = [];
+    protected $firstProcessors = [];
 
     /**
      * 容器管理器
@@ -72,14 +73,9 @@ class AnnotationManager
      *</pre>
      * @var ContainerManager
      */
-    protected $containerManager = null;
+    protected $containerManager;
 
-    public function __construct($attrs = [])
-    {
-        $this->_init($attrs);
-    }
-
-    protected function _init($attrs)
+    public function __construct(array $attrs = [])
     {
         if (!empty($attrs)) {
             foreach ($attrs as $attr=>$value) {
@@ -94,9 +90,9 @@ class AnnotationManager
      *<pre>
      *  略
      *</pre>
-     * @var array
+     * @return static
      */
-    public function start()
+    public function start():self
     {
 
         // 开始扫描文件
@@ -115,16 +111,16 @@ class AnnotationManager
      *  收集bean注解
      *</pre>
      */
-    protected function startScan()
+    protected function startScan():void
     {
-        $this->scan = new Scan($this->getFormatScanrules());
+        $this->scan = new Scan($this->getFormatScanRules());
         $classList = $this->scan->startScanClass();
 
         $anotationParser = new annotationParser($this);
         $anotationParser->parse($classList);
     }
 
-    protected function getFormatScanrules()
+    protected function getFormatScanRules()
     {
         $scan_rules =  [];
         foreach ($this->scanRules as $rule) {
@@ -150,16 +146,16 @@ class AnnotationManager
      *<pre>
      *  略
      *</pre>
-     * @param array<命名空间,命名空间文件路径> $scan_paths 扫描路径
+     * @param array<命名空间,命名空间文件路径> $scanRules 扫描路径
      * @return static
      */
-    public function addScanRule(...$scanPaths):self
+    public function addScanRule(...$scanRules):self
     {
-        foreach ($scanPaths as $scan_path) {
-            if (is_string($scan_path)) {
-                $this->scanRules[] = $this->getClassPath($scan_path);
+        foreach ($scanRules as $scan_rule) {
+            if (is_string($scan_rule)) {
+                $this->scanRules[] = $this->getClassPath($scan_rule);
             } else {
-                $this->scanRules[] = $scan_path;
+                $this->scanRules[] = $scan_rule;
             }
         }
 
@@ -181,18 +177,18 @@ class AnnotationManager
      *<pre>
      *  略
      *</pre>
-     * @param array<命名空间,命名空间文件路径> $scanPaths 扫描路径
+     * @param array<命名空间,命名空间文件路径> $scanRules 扫描路径
      * @return static
      */
-    public function addFirstScanRule(...$scanPaths):self
+    public function addFirstScanRule(...$scanRules):self
     {
 
         $scanRuleList = [];
-        foreach ($scanPaths as $scan_path) {
-            if (is_string($scan_path)) {
-                $scanRuleList[] = $this->getClassPath($scan_path);
+        foreach ($scanRules as $scan_rule) {
+            if (is_string($scan_rule)) {
+                $scanRuleList[] = $this->getClassPath($scan_rule);
             } else {
-                $scanRuleList[] = $scan_path;
+                $scanRuleList[] = $scan_rule;
             }
         }
 
@@ -200,32 +196,19 @@ class AnnotationManager
 
         return $this;
     }
-
-
-    /**
-     * 注册处理器
-     *<B>说明：</B>
-     *<pre>
-     *  略
-     *</pre>
-     * @param Processor $processor
-     */
-    public function addProcessor($processor)
-    {
-        $processorClazz = get_class($processor);
-        if (!isset($this->processorList[$processorClazz])) {
-            $this->processorList[$processorClazz] = $processor;
-        }
-    }
-
-    public function addFirstProcessor(...$processors)
+    
+    public function addFirstProcessor(...$processors):self
     {
         array_unshift($this->firstProcessors, ... $processors);
+
+        return $this;
     }
 
-    public function addCustomProcessors(...$customProcessors)
+    public function addCustomProcessors(...$customProcessors):self
     {
         $this->customProcessors = $customProcessors + $this->customProcessors;
+
+        return $this;
     }
 
     /**
@@ -235,11 +218,15 @@ class AnnotationManager
      *  略
      *</pre>
      * @param string $processorClazz
-     * @return Processor
+     * @return AnnotationProcessor
      */
-    public function getProcessor($processorClazz)
+    public function getProcessor(string $processorClazz):?AnnotationProcessor
     {
-        return $this->processorList[$processorClazz] ??  null;
+        if (!$this->hasProcessor($processorClazz)) {
+            $this->processorList[$processorClazz] = $this->makeProcessor($processorClazz);
+        }
+
+        return $this->processorList[$processorClazz];
     }
 
     /**
@@ -249,9 +236,9 @@ class AnnotationManager
      *  略
      *</pre>
      * @param string $processorClazz
-     * @return Processor
+     * @return bool
      */
-    public function hasProcessor($processorClazz)
+    public function hasProcessor($processorClazz):bool
     {
         return isset($this->processorList[$processorClazz]) ?  true : false;
     }
@@ -263,9 +250,9 @@ class AnnotationManager
      *  略
      *</pre>
      * @param string $processorClazz
-     * @return Processor
+     * @return AnnotationProcessor
      */
-    public function makeProcessor($processorClazz)
+    protected function makeProcessor($processorClazz):AnnotationProcessor
     {
         /**@var Processor $processor */
         if (isset($this->customProcessors[$processorClazz])) {
@@ -280,8 +267,6 @@ class AnnotationManager
         return $processor;
     }
 
-
-
     /**
      * 扫描接触,触发事件
      *<B>说明：</B>
@@ -289,7 +274,7 @@ class AnnotationManager
      *  触发处理器结束工作
      *</pre>
      */
-    protected function endScan()
+    protected function endScan():void
     {
         // 优先处理器排前面
         $_firstProcessors = [];
@@ -299,10 +284,15 @@ class AnnotationManager
             }
         }
 
-        $this->processorList = $_firstProcessors + $this->processorList;
+        $processorList = $_firstProcessors + $this->processorList;
 
-        foreach ($this->processorList as $processor) {
+        foreach ($processorList as $processor) {
             $processor->endScanHandle();
         }
+
+        // 清空变量,回收资源
+        $this->processorList = [];
+        $this->firstProcessors = [];
+        $this->customProcessors = [];
     }
 }

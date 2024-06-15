@@ -13,7 +13,7 @@ use ReflectionClass;
 class ClassReflection
 {
     const PARAMS_REGEX =  '/<(.+)::([^>]+)?>/';
-    const BEAN_REF_REGEX =  '/<ref::([^>]+)?>/';
+    const BEAN_REF_REGEX =  '/^<(ref|lazy)::([^>]+)?>/';
     const PARAMS_SPLIT_CHARACTER = '|';
 
     /**
@@ -54,7 +54,7 @@ class ClassReflection
      *</pre>
      * @var Definition
      */
-    protected $definition = null;
+    protected $definition;
 
     /**
      * 构造方法
@@ -143,16 +143,19 @@ class ClassReflection
                     $defaultValue = $param->getDefaultValue();
                     if (is_string($defaultValue)) {
                         if (preg_match(static::BEAN_REF_REGEX, $defaultValue, $match) ) {
-                            $ref_bean_name = $match[1];
-                            $definition = new Definition(['_ref'=>$ref_bean_name]);
-                            $definition->setContainerManager($this->definition->getContainerManager());
+                            $ref_type = $match[1];
+                            if ($ref_type === 'lazy') {
+                                $definition = $this->definition->newDefinition(['_ref'=>$match[2],'_lazy'=>true]);
+                            } else {
+                                $definition = $this->definition->newDefinition(['_ref'=>$match[2]]);
+                            }
+
                             $defaultValue = $definition->make();
                         } else if (preg_match(static::PARAMS_REGEX, $defaultValue, $match)) {
-                            $bean_func_name = $match[1];
-                            $bean_func_params = $match[2];
-                            $bean_func_params = explode(static::PARAMS_SPLIT_CHARACTER,$bean_func_params);
-                            $definition = new Definition(['_func'=>[$bean_func_name,$bean_func_params]]);
-                            $definition->setContainerManager($this->definition->getContainerManager());
+                            $func_name = $match[1];
+                            $func_params = $match[2];
+                            $func_params_arr = explode(static::PARAMS_SPLIT_CHARACTER,$func_params);
+                            $definition = $this->definition->newDefinition(['_func'=>[$func_name,$func_params_arr]]);
                             $defaultValue = $definition->make();
                         }
                     }

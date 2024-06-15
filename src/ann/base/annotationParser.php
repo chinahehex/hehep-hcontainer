@@ -15,17 +15,11 @@ use ReflectionClass;
 class annotationParser
 {
 
+    /**
+     * @var AnnotationReader
+     */
     protected $annotationReader;
 
-    /**
-     * 注解处理器
-     *<B>说明：</B>
-     *<pre>
-     *  略
-     *</pre>
-     * @var AnnotationProcessor[]
-     */
-    protected $annotationProcessors;
 
     /**
      * 容器管理器
@@ -35,9 +29,9 @@ class annotationParser
      *</pre>
      * @var AnnotationManager
      */
-    protected $annotationManager = null;
+    protected $annotationManager;
 
-    public function __construct($annotationManager)
+    public function __construct(AnnotationManager $annotationManager)
     {
         $this->annotationReader = new AnnotationReader();
         $this->annotationManager = $annotationManager;
@@ -52,12 +46,9 @@ class annotationParser
      * @param Annotation $annotationMeta
      * @return AnnotationProcessor
      */
-    public function getAnnotationProcessor($annotationMeta)
+    public function getAnnotationProcessor(Annotation $annotationMeta):AnnotationProcessor
     {
         $processorClass = $annotationMeta->getProcessor();
-        if (!$this->annotationManager->hasProcessor($processorClass)) {
-            $this->annotationManager->makeProcessor($processorClass);
-        }
 
         return $this->annotationManager->getProcessor($processorClass);
     }
@@ -71,7 +62,7 @@ class annotationParser
      * @param null $myAnnotation
      * @return Annotation
      */
-    public function getAnnotationMeta($myAnnotation)
+    public function getAnnotationMeta($myAnnotation):?Annotation
     {
         $reflectionClass = new ReflectionClass(get_class($myAnnotation));
         /** @var Annotation $annotationMeta */
@@ -89,18 +80,12 @@ class annotationParser
      * @param array $clazzList 文件列表
      * @return void
      */
-    public function parse($clazzList = [])
+    public function parse(array $clazzList = []):void
     {
-        try {
-            foreach ($clazzList as $clazz) {
-                $annotationClass = new AnnotationClass($clazz,$this,$this->annotationReader);
-                $annotationClass->parse();
-            }
-        } catch (\Exception $exception) {
-            //var_dump($exception->getTraceAsString());
-            throw $exception;
+        foreach ($clazzList as $clazz) {
+            $annotationClass = new AnnotationClass($clazz,$this,$this->annotationReader);
+            $annotationClass->parse();
         }
-
     }
 
 }

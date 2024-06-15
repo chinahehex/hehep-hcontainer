@@ -12,28 +12,24 @@ use ReflectionClass;
 class BeanProxy
 {
     /**
-     * 创建代理对象
+     * 生成代理类
      *<B>说明：</B>
      *<pre>
      * 略
      *</pre>
      * @param string $className 类路径
-     * @param ProxyHandler $proxyHandler 代理事件
-     * @return object
+     * @return string
      */
-    static public function make($className,ProxyHandler $proxyHandler)
+    public static function buildProxyClass($className)
     {
         $proxyClassName = static::buildProxyClassName($className);
         // 判断类是否存在
         if (!class_exists($proxyClassName)) {
-            $proxyClassTemplate = static::buildProxyClassTemplate($className,$proxyClassName);
+            $proxyClassTemplate = static::buildProxyClassTemplate($className,$proxyClassName,ProxyFullClassTemplate::class);
             eval($proxyClassTemplate);
         }
 
-        // 创建代理对象
-        $newRc = new ReflectionClass($proxyClassName);
-
-        return $newRc->newInstance($proxyHandler);
+        return $proxyClassName;
     }
 
     /**

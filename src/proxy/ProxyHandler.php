@@ -1,7 +1,6 @@
 <?php
 namespace hehe\core\hcontainer\proxy;
 
-use \hehe\core\hcontainer\ContainerManager;
 
 /**
  * 代理事件处理类
@@ -13,20 +12,12 @@ use \hehe\core\hcontainer\ContainerManager;
 class ProxyHandler
 {
 
+    public $args = [];
+
     /**
-     * @var \hehe\core\hcontainer\ContainerManager
+     * @var Definition
      */
-    protected $containerManager;
-
-    public function getContainerManager():ContainerManager
-    {
-        return $this->containerManager;
-    }
-
-    public function setContainerManager(ContainerManager $containerManager):void
-    {
-        $this->containerManager = $containerManager;
-    }
+    public $definition;
 
     /**
      * 被代理对象
@@ -46,9 +37,24 @@ class ProxyHandler
      *</pre>
      * @param  object
      */
-    public function __construct($target)
+    public function __construct()
     {
-        $this->target = $target;
+
+    }
+
+    public function getInstance()
+    {
+        if ($this->target === null) {
+            if (!empty($this->definition->getRef())) {
+                $this->target = $this->definition->getContainerManager()->getBeanId($this->definition->getRef());
+            } else {
+                $this->target = $this->definition->createObject($this->args);
+            }
+
+            $this->args = [];
+        }
+
+        return $this->target;
     }
 
     /**
@@ -63,35 +69,9 @@ class ProxyHandler
      */
     public function invoke(string $method, array $parameters)
     {
-        return call_user_func_array([$this->target, $method], $parameters);
+        $aopManager = $this->definition->getContainerManager()->getAopManager();
+
+        return $aopManager->execute($this->getInstance(),$method,$parameters);
     }
 
-    /**
-     * 设置属性
-     *<B>说明：</B>
-     *<pre>
-     * 略
-     *</pre>
-     * @param string $name 属性名
-     * @param mixed $value 属性值
-     * @return mixed
-     */
-    public function setAttr($name, $value)
-    {
-        $this->target->$name = $value;
-    }
-
-    /**
-     * 获取属性值
-     *<B>说明：</B>
-     *<pre>
-     * 略
-     *</pre>
-     * @param string $name 属性名
-     * @return mixed
-     */
-    public function getAttr($name)
-    {
-        return $this->target->$name;
-    }
 }
