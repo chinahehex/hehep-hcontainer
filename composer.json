@@ -1,5 +1,5 @@
 {
-	"name": "hehep/hcontainer",
+	"name": "hehepx/hehep-hcontainer",
 	"description": "hehep-hcontainer 是一个 di 容器,提供类的实例化,对象属性依赖注入,AOP 拦截,容器文件扫描,等等功能",
 	"license": "Apache-2.0",
 	"authors": [
