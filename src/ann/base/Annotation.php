@@ -1,5 +1,6 @@
 <?php
 namespace hehe\core\hcontainer\ann\base;
+use Attribute;
 
 /**
  * Annotation 元注解类
@@ -9,7 +10,8 @@ namespace hehe\core\hcontainer\ann\base;
  * 元注解解释:注解的注解简称为元注解
  *</pre>
  */
-class Annotation
+#[Attribute]
+class Annotation extends Ann
 {
     const TARGET_CLASS = 'CLASS';
 
@@ -43,21 +45,11 @@ class Annotation
      *<pre>
      *  略
      *</pre>
-     * @param  array $values
+     * @param  array $value
      */
-    public function __construct($values = [])
+    public function __construct($value,string $target = null,string $processor = null)
     {
-        if (isset($values['value'])) {
-            $this->processor = $values['value'];
-        }
-
-        if (isset($values['processor'])) {
-            $this->processor = $values['processor'];
-        }
-
-        if (isset($values['target'])) {
-            $this->target = $values['target'];
-        }
+        $this->injectArgParams(func_get_args(),'processor');
     }
 
     /**

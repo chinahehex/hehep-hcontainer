@@ -89,7 +89,7 @@ class ProxyFullClassTemplate
      * @param string $proxyHandlerPropertyName
      * @return string
      */
-    static private function buildMethodTemplate($reflectionMethods = [], $proxyHandlerPropertyName)
+    static private function buildMethodTemplate($reflectionMethods, $proxyHandlerPropertyName)
     {
         $methods = [];
         foreach ($reflectionMethods as $reflectionMethod) {
@@ -102,7 +102,12 @@ class ProxyFullClassTemplate
             $return_type_code = '';
             if ($reflectionMethod->hasReturnType()) {
                 $refReturnType = $reflectionMethod->getReturnType();
-                $return_type_code = $refReturnType->allowsNull() ? ':?' . (string)$refReturnType : ':' . (string)$refReturnType;
+                $return_type_php = (string)$refReturnType;
+                if (strpos($return_type_php,'?') === false) {
+                    $return_type_code = $refReturnType->allowsNull() ? ':?' . $return_type_php : ':' . $return_type_php;
+                } else {
+                    $return_type_code = ':' . $return_type_php;
+                }
             }
 
             // 方法体
@@ -141,7 +146,12 @@ class ProxyFullClassTemplate
             $type_name = "";
             if ($reflectionParameter->hasType()) {
                 $var_type = $reflectionParameter->getType();
-                $type_name = $var_type->allowsNull() ? "?" . (string)$var_type : (string)$var_type;
+                $var_type_php = (string)$var_type;
+                if (strpos($var_type_php,'?') === false) {
+                    $type_name = $var_type->allowsNull() ? "?" . $var_type_php : $var_type_php;
+                } else {
+                    $type_name = $var_type_php;
+                }
             }
 
             $methodParameterName = $reflectionParameter->getName();

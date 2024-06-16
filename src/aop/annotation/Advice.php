@@ -1,12 +1,16 @@
 <?php
 namespace hehe\core\hcontainer\aop\annotation;
 
+use hehe\core\hcontainer\ann\base\Ann;
 use hehe\core\hcontainer\ann\base\Annotation;
+use Attribute;
 
 /**
  * @Annotation("hehe\core\hcontainer\aop\annotation\AdviceProcessor")
  */
-class Advice
+#[Annotation("hehe\core\hcontainer\aop\annotation\AdviceProcessor")]
+#[Attribute]
+class Advice extends Ann
 {
     // 通知点位置
     public $advice;
@@ -23,15 +27,20 @@ class Advice
      *<pre>
      *  略
      *</pre>
-     * @param array $attrs
+     * @param array $value
      */
-    public function __construct($attrs = [])
+    public function __construct($value = null,string $pointcut = null,string $advice = null,string $behaviors = null)
     {
-        foreach ($attrs as $attr=>$value) {
-            if ($attr == "value") {
-                $this->behaviors[] = $value;
+        $values = $this->getArgParams(func_get_args(),'behaviors');
+        foreach ($values as $name=>$val) {
+            if ($name == 'behaviors') {
+                if (is_string($val)) {
+                    $this->behaviors = explode(',',$val);
+                } else {
+                    $this->behaviors = $val;
+                }
             } else {
-                $this->$attr = $value;
+                $this->$name = $val;
             }
         }
     }

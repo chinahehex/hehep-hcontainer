@@ -14,8 +14,7 @@ class LogBehavior extends AopBehavior
         } else {
             $user->aop_log = "log:" . $pointcutCtx->methodResult;
         }
-
-        //var_dump("add log:{$method}" . json_encode($parameters) . ',' . json_encode($returnResult) . ',' .   date('Y-m-d H:i:s'));
+        var_dump("handle log");
     }
 
     public function log(PointcutContext $pointcutCtx)
@@ -27,7 +26,7 @@ class LogBehavior extends AopBehavior
         } else {
             $user->aop_log = "log:" . $pointcutCtx->methodResult;
         }
-        var_dump("log");
+        var_dump("class log");
     }
 
     public static function log2(PointcutContext $pointcutCtx)
@@ -39,5 +38,6 @@ class LogBehavior extends AopBehavior
         } else {
             $user->aop_log = "log:" . $pointcutCtx->methodResult;
         }
+        var_dump("static log");
     }
 }

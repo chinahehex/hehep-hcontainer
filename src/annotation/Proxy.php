@@ -1,12 +1,15 @@
 <?php
 namespace hehe\core\hcontainer\annotation;
 
+use hehe\core\hcontainer\ann\base\Ann;
 use  hehe\core\hcontainer\ann\base\Annotation;
-
+use Attribute;
 /**
  * @Annotation("hehe\core\hcontainer\annotation\BeanProcessor")
  */
-class Proxy
+#[Annotation("hehe\core\hcontainer\annotation\BeanProcessor")]
+#[Attribute]
+class Proxy extends Ann
 {
 
     public $onProxy = true;
@@ -21,15 +24,8 @@ class Proxy
      *</pre>
      * @param array $attrs
      */
-    public function __construct($attrs = [])
+    public function __construct($value = null,string $proxyHandler = null)
     {
-
-        foreach ($attrs as $attr=>$value) {
-            if ($attr == "value") {
-                $this->proxyHandler = $value;
-            } else {
-                $this->$attr = $value;
-            }
-        }
+        $this->injectArgParams(func_get_args(),'proxyHandler');
     }
 }

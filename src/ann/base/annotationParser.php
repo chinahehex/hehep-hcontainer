@@ -4,7 +4,8 @@ namespace hehe\core\hcontainer\ann\base;
 use Doctrine\Common\Annotations\AnnotationReader;
 use hehe\core\hcontainer\ann\AnnotationManager;
 use ReflectionClass;
-
+use ReflectionMethod;
+use ReflectionProperty;
 /**
  * 注解解析类
  *<B>说明：</B>
@@ -33,7 +34,10 @@ class annotationParser
 
     public function __construct(AnnotationManager $annotationManager)
     {
-        $this->annotationReader = new AnnotationReader();
+        if (class_exists(AnnotationReader::class)) {
+            $this->annotationReader = new AnnotationReader();
+        }
+
         $this->annotationManager = $annotationManager;
     }
 
@@ -53,6 +57,37 @@ class annotationParser
         return $this->annotationManager->getProcessor($processorClass);
     }
 
+    public function getClassAnnotations(ReflectionClass $reflectionClass)
+    {
+        $classAnnotations = [];
+        if (!is_null($this->annotationReader)) {
+            $classAnnotations  = $this->annotationReader->getClassAnnotations($reflectionClass);
+        }
+
+        return $classAnnotations;
+    }
+
+    public function getMethodAnnotations(ReflectionMethod $reflectionMethod)
+    {
+
+        $methodAnnotations = [];
+        if (!is_null($this->annotationReader)) {
+            $methodAnnotations  = $this->annotationReader->getMethodAnnotations($reflectionMethod);
+        }
+
+        return $methodAnnotations;
+    }
+
+    public function getPropertyAnnotations(ReflectionProperty $propertie)
+    {
+        $propertieAnnotations = [];
+        if (!is_null($this->annotationReader)) {
+            $propertieAnnotations  = $this->annotationReader->getPropertyAnnotations($propertie);
+        }
+
+        return $propertieAnnotations;
+    }
+
     /**
      * 获取元注解Annotation
      *<B>说明：</B>
@@ -65,10 +100,36 @@ class annotationParser
     public function getAnnotationMeta($myAnnotation):?Annotation
     {
         $reflectionClass = new ReflectionClass(get_class($myAnnotation));
+        $annotationMeta = null;
         /** @var Annotation $annotationMeta */
-        $annotationMeta = $this->annotationReader->getClassAnnotation($reflectionClass,Annotation::class);
+        if (!is_null($this->annotationReader)) {
+            $annotationMeta = $this->annotationReader->getClassAnnotation($reflectionClass,Annotation::class);
+        }
+
+        if ($annotationMeta == null) {
+            $annotationMeta = $this->getPhpAnnotationMeta($reflectionClass,Annotation::class);
+        }
 
         return $annotationMeta;
+    }
+
+    protected function getPhpAnnotationMeta(ReflectionClass $reflectionClass,$annotationName)
+    {
+        if ($reflectionClass->getName() == Annotation::class) {
+            return null;
+        }
+
+        if (method_exists($reflectionClass, 'getAttributes')) {
+            $attributes = $reflectionClass->getAttributes();
+            foreach ($attributes as $attribute) {
+                $annotation = $attribute->newInstance();
+                if ($annotation instanceof $annotationName) {
+                    return $annotation;
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -83,7 +144,7 @@ class annotationParser
     public function parse(array $clazzList = []):void
     {
         foreach ($clazzList as $clazz) {
-            $annotationClass = new AnnotationClass($clazz,$this,$this->annotationReader);
+            $annotationClass = new AnnotationClass($clazz,$this);
             $annotationClass->parse();
         }
     }

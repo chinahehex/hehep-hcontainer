@@ -2,7 +2,8 @@
 
 ## 介绍
 - hehep-hcontainer 是一个 di容器,提供类的实例化工具组件
-- 支持解析注解
+- 支持注释注解
+- 支持PHP原生注解
 - 支持类属性,构造参数依赖注入
 - 支持AOP切面
 - 支持Bean作用域
@@ -22,8 +23,13 @@ git clone git@github.com:chinahehex/hehep-hcontainer.git
 ```
 composer require hehepx/hehep-hcontainer
 ```
+- 依赖包
+```
+如果需要注释注解,则需要安装doctrine
+composer require "doctrine/annotations"
 
-
+如是PHP8,可以使用PHP原生注解,或两者同时使用
+```
 ## Bean组件
 
 ### 常规定义Bean
@@ -51,11 +57,11 @@ $beanDefinition = [
 ### 注解定义bean
 - 注解说明
 ```
-通过@bean注解器对bean进行描述,注解器属性与"常规定义Bean"一致
+通过@Bean注解器对bean进行描述,注解器属性与"常规定义Bean"一致
 基本格式如下
-@bean("user") 定义bean id的属性
-@bean("user",_scope="app") 定义bean 作用域属性
-@bean("user",_scope=true,_onProxy=true)
+@Bean("user") 定义bean id的属性
+@Bean("user",_scope="app") 定义bean 作用域属性
+@Bean("user",_scope=true,_onProxy=true)
 
 ```
 - 示例代码
@@ -167,6 +173,7 @@ $beans = [
     'user'=>['class'=>'app\servers\User','_scope'=>'request'],
 ];
 
+// user bean 从$app->container 容器中取出
 $user = $hcontainer->getBean('user');
 
 // 注销$app变量,其$container属性也会注销,随着request容器的回收,Bean $user 对象也会被注销
@@ -292,7 +299,7 @@ $beans = [
 
 ```
 
-### 属性注入Bean对象
+### 属性注入Bean
 - 说明
 ```
 以<ref::bean别名> 的方式注入Bean 对象
@@ -422,7 +429,7 @@ class UserBean
 {
     
     /**
-     * 注解
+     * $annRole 为代理对象
      * @Ref("role","lazy"=>true)
      * @var RoleBean
      */
@@ -433,8 +440,8 @@ class UserBean
 ### 延迟注入
 - 说明
 ```
-由于在注入的过程中,容易出现相互依赖而导致的死循环问题,采用延迟注入的方式可以解决此问题,
-延迟注入会自动开启代理模式,如果Bean已经开代理模式，注入的是Bean单例代理对象,如Bean 未开启代理模式,则创建新的代理对象
+由于在注入的过程中,容易出现相互依赖而导致的死循环问题,延迟注入的方式有效的解决此问题,
+延迟注入会自动开启代理模式,如果Bean已经开启过代理模式，注入的是Bean单例代理对象,如Bean 未开启代理模式,则创建新的代理对象
 ```
 
 - 示例代码
@@ -468,11 +475,11 @@ class RoleBean
 
 ```
 
-## 容器扫描及注解
+## 扫描,注解处理器
 - 说明
 ```
 开启扫描后,程序会自动查找指定命名空间下的所有类文件,并收集注解信息,同时将收集到的注解信息交给对应的注解处理器来处理业务，
-比如与bean相关的注解Bean,Ref都被指定由"hehe\core\hcontainer\annotation\BeanProcessor"处理
+比如与Bean相关的注解器Bean,Ref都被指定由"hehe\core\hcontainer\annotation\BeanProcessor"来处理
 ```
 
 ### 扫描规则
@@ -497,10 +504,10 @@ $hcontainer->startScan();
 ### 注解处理器
 - 说明
 ```
-注解处理器作用:专门用于处理扫描收集到的注解信息
-注解处理器都必须继承"hehe\core\hcontainer\ann\base\AnnotationProcessor"类
-优先处理器:如果想优先执行处理器,则可以将此处理器添加到"优先处理器"集合中
-重置处理器:如想重写处理器的规则,则可以将此处理器添加到"重置处理器"集合中
+注解处理器作用:专门用于处理收集到的注解信息
+注解处理器基类:都必须继承"hehe\core\hcontainer\ann\base\AnnotationProcessor"类
+优先处理器:如果想优先执行某个处理器,则可以将此处理器添加到"优先处理器"集合中
+重置处理器:如想重写某个处理器的规则,则可以将此处理器添加到"重置处理器"集合中
 ```
 
 - 定义注解处理器
@@ -570,12 +577,10 @@ class Bean
 ## AOP方法拦截
 - 说明
 ```
-方法切面即拦截方法调用,在调用目标方法之前,之后设置拦截点，并在拦截点插入行为业务,比如日志,获取缓存数据等
-基本概念:
-切面(aspect)：
+切面(aspect):AOP切面通俗点讲就是拦截类方法调用,在调用目标方法之前,之后设置拦截点，并在拦截点插入行为业务,比如日志,获取缓存数据等
+实现原理:在执行创建目标对象时动态的生成代理类，通过代理类操作目标类
 通知点(advice):目标方法之前,之后,异常时切入业务行为的位置点
 拦截点表达式(pointcut):目标方法或匹配方法名的正则表达
-
 ```
 
 ### 默认通知点位置
@@ -732,28 +737,19 @@ class BeanProcessor extends AnnotationProcessor
 {
     // 实现以下方法即可
     // 注解类方式
-    public function annotationHandlerClazz($annotation,$clazz)
-    {
-    
-    }
+    public function annotationHandlerClazz($annotation,$clazz){}
     
     // 注解类方法方式
-    public function annotationHandlerMethod($annotation,$clazz,$method)
-    {
-    
-    }
+    public function annotationHandlerMethod($annotation,$clazz,$method){}
     
     // 注解类属性方式
-    public function annotationHandlerAttribute($annotation,$clazz,$attribute)
-    {
-    
-    }
+    public function annotationHandlerAttribute($annotation,$clazz,$attribute){}
 }
 ```
-###定义注解
+###定义注解器
 - 说明
 ```
-定义注解时，也必须同时定义与注解处理器的绑定关系，
+定义注解器时，必须为其指定注解处理器
 可通过"hehe\core\hcontainer\annotation\Annotation"注解器将"注解器"与"注解处理器"绑定
 Annotation格式:@Annotation("注解处理器类路径")
 ```
@@ -761,7 +757,6 @@ Annotation格式:@Annotation("注解处理器类路径")
 - 代码示例
 ```php
 namespace hehe\core\hcontainer\annotation;
-
 use  hehe\core\hcontainer\annotation\Annotation;
 
 /**
@@ -771,15 +766,11 @@ class Ref
 {
     public $ref;
 
-    public function __construct($attrs = [])
+    public function __construct($value = null,bool $lazy = null,string $ref = null)
     {
-        foreach ($attrs as $attr=>$value) {
-            if ($attr == "value") {
-                $this->ref = $value;
-            } else {
-                $this->$attr = $value;
-            }
-        }
+       // 无需处理构造参数,调用injectArgParams将构造参数直接赋值给注解器属性
+       // 如需处理构造参数,通过$this->getArgParams(func_get_args(),'ref') 获取格式化后的构造参数
+        $this->injectArgParams(func_get_args(),'ref');
     }
 }
 
@@ -806,18 +797,151 @@ class User
 
 ```
 
+### PHP原生注解
+- 说明
+```
+原生注解与注释注解的用户基本一致,格式如下
+#[注解器("第一个构造参数值")]
+#[注解器("第一个构造参数值",属性名称1:属性值1,属性名称2:属性值2)]
+#[注解器(属性名称1:属性值1,属性名称2:属性值2)]
+#[注解器(array(属性名称1=>属性值1,属性名称2=>属性值2))]
+```
+
+- 定义注解器1
+```php
+namespace hehe\core\hcontainer\annotation;
+
+use  hehe\core\hcontainer\annotation\Annotation;
+use Attribute;
+
+#[Annotation("hehe\core\hcontainer\annotation\BeanProcessor")]
+#[Attribute]
+class Ref
+{
+    public $ref;
+
+    public function __construct($value = null,bool $lazy = null,string $ref = null)
+    {
+        // 自己处理构造参数
+    }
+}
+
+```
+
+- 定义注解器2
+
+```php
+namespace hehe\core\hcontainer\annotation;
+
+use hehe\core\hcontainer\ann\base\Ann;
+use hehe\core\hcontainer\annotation\Annotation;
+use Attribute;
+
+#[Annotation("hehe\core\hcontainer\annotation\BeanProcessor")]
+#[Attribute]
+class Ref extends Ann
+{
+    public $ref;
+
+    public function __construct($value = null,bool $lazy = null,string $ref = null)
+    {
+        // 无需处理构造参数,调用injectArgParams将构造参数直接赋值给注解器属性
+        $this->injectArgParams(func_get_args(),'ref');
+    }
+}
+
+```
+
+- 定义注解器3
+
+```php
+namespace hehe\core\hcontainer\annotation;
+
+use hehe\core\hcontainer\ann\base\Ann;
+use hehe\core\hcontainer\annotation\Annotation;
+use Attribute;
+
+#[Annotation("hehe\core\hcontainer\annotation\BeanProcessor")]
+#[Attribute]
+class Advice extends Ann
+{
+    // 通知点位置
+    public $advice;
+
+    // 业务行为集合
+    public $behaviors = [];
+
+    // 拦截点表达式
+    public $pointcut = '';
+
+    public function __construct($value = null,string $pointcut = null,string $advice = null,string $behaviors = null)
+    {
+        // 需处理构造参数,获取格式化的构造参数
+        $values = $this->getArgParams(func_get_args(),'behaviors');
+        foreach ($values as $name=>$val) {
+            if ($name == 'behaviors') {
+                if (is_string($val)) {
+                    $this->behaviors = explode(',',$val);
+                } else {
+                    $this->behaviors = $val;
+                }
+            } else {
+                $this->$name = $val;
+            }
+        }
+    }
+}
+
+```
+
+- 注解器示例
+```php
+namespace admin\service;
+use hehe\core\hcontainer\annotation\Bean;
+use hehe\core\hcontainer\annotation\Ref;
+
+
+#[Bean("user")]
+class User
+{
+    public $name;
+
+    /**
+     * role 值为Role bean对象
+     * 
+     */
+     #[Ref("role",lazy:true)]
+    public $role;
+    
+    #[After("hcontainer\\tests\common\LogBehavior@@log2")]
+    public function okaop1($log,$msg)
+    {
+
+        return $msg;
+    }
+    
+    #[After(behaviors:"hcontainer\\tests\common\LogBehavior@@log2")]
+    public function okaop2($log,$msg)
+    {
+
+        return $msg;
+    }
+}
+
+```
+
 ### 默认注解器列表
 
-注解器 |说明
----------|----------
-hehe\core\hcontainer\annotation\Bean|标识此类为bean对象
-hehe\core\hcontainer\annotation\Proxy|标识此类启用了代理,同时会生成代理对象,一般用于切面
-hehe\core\hcontainer\annotation\Ref|标识类属性为bean对象
-hehe\core\hcontainer\aop\annotation\After|aop切面注解器,用于在执行目标方法之后切入“业务行为”
-hehe\core\hcontainer\aop\annotation\Before|aop切面注解器,用于在执行目标方法之前切入“业务行为”
-hehe\core\hcontainer\aop\annotation\Around|aop切面注解器,用于在执行目标方法之前与之后切入“业务行为”
-hehe\core\hcontainer\aop\annotation\AfterThrowing|aop切面注解器,用于在执行目标方法时发生异常时切入“业务行为”
-hehe\core\hcontainer\aop\annotation\AfterReturning|aop切面注解器,用于在执行目标方法之后,无论是否发生异常,都会切入“业务行为”,类似异常的finally
+注解器 |说明|格式
+---------|----------|------
+hehe\core\hcontainer\annotation\Bean|标识此类为bean对象|@Bean("user"),@Bean(id="user"),@Bean("user",_onProxy=>true)
+hehe\core\hcontainer\annotation\Proxy|标识此类启用了代理,同时会生成代理对象,一般用于切面|@Proxy()
+hehe\core\hcontainer\annotation\Ref|标识类属性为bean对象|@Ref("user"),@Ref("user",lazy=true)
+hehe\core\hcontainer\aop\annotation\After|aop切面注解器,用于在执行目标方法之后切入“业务行为”|@After("业务行为类路径"),@After("业务行为类路径@方法"),@After("业务行为类路径@@静态方法")
+hehe\core\hcontainer\aop\annotation\Before|aop切面注解器,用于在执行目标方法之前切入“业务行为”|与@After格式一致
+hehe\core\hcontainer\aop\annotation\Around|aop切面注解器,用于在执行目标方法之前与之后切入“业务行为”|与@After格式一致
+hehe\core\hcontainer\aop\annotation\AfterThrowing|aop切面注解器,用于在执行目标方法时发生异常时切入“业务行为”|与@After格式一致
+hehe\core\hcontainer\aop\annotation\AfterReturning|aop切面注解器,用于在执行目标方法之后,无论是否发生异常,都会切入“业务行为”,类似异常的finally|与@After格式一致
 
 
 

@@ -1,12 +1,15 @@
 <?php
 namespace hehe\core\hcontainer\annotation;
 
+use hehe\core\hcontainer\ann\base\Ann;
 use  hehe\core\hcontainer\ann\base\Annotation;
-
+use Attribute;
 /**
  * @Annotation("hehe\core\hcontainer\annotation\BeanProcessor")
  */
-class Bean
+#[Annotation("hehe\core\hcontainer\annotation\BeanProcessor")]
+#[Attribute]
+class Bean extends Ann
 {
     public $id;
 
@@ -34,16 +37,21 @@ class Bean
      *<pre>
      *  略
      *</pre>
-     * @param array $attrs
+     * @param array|string $value
      */
-    public function __construct($attrs = [])
+    public function __construct(
+        $value = null,
+        bool $_onProxy = null,
+        string $_init = null,
+        string $_proxyHandler = null,
+        bool $_scope = null,
+        bool $_single = null,
+        array $_args = null,
+        array $_attrs = null,
+        string $id = null
+    )
     {
-        foreach ($attrs as $attr=>$value) {
-            if ($attr == "value") {
-                $this->id = $value;
-            } else {
-                $this->$attr = $value;
-            }
-        }
+        $this->injectArgParams(func_get_args(),'id');
+        
     }
 }

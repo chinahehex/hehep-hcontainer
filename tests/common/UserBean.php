@@ -13,9 +13,10 @@ use PHPUnit\Runner\Exception;
  *
  * Class UserBean
  * @package hcontainer\tests\common
- * @bean("user",_scope=true)
  * @After("hcontainer\tests\common\LogBehavior@log",pointcut=".+Action")
  */
+#[Bean("user")]
+#[After("hcontainer\\tests\common\LogBehavior@log",pointcut:".+Action")]
 class UserBean
 {
     /**

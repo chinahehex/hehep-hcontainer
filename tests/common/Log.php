@@ -7,7 +7,7 @@ use hehe\core\hcontainer\aop\annotation\After;
  *
  * Class UserBean
  * @package hcontainer\tests\common
- * @bean("log")
+ * @Bean("log")
  * @After("hcontainer\tests\common\LogBehavior@log",pointcut=".+Action")
  */
 class Log extends BaseLog

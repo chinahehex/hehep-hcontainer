@@ -165,7 +165,12 @@ class ClassReflection
                     $defaultValue = null;
                     if (!$param->getType()->isBuiltin()) {
                         // 非系统类型
-                        $class = $param->getClass()->getName();
+                        $type = $param->getType();
+                        if ($type instanceof \ReflectionNamedType) {
+                            $class = $type->getName(); // 获取类名
+                        } else {
+                            $class = $param->getClass()->getName();
+                        }
                         // 如果类是bean,则自动从容器读取bean 对象
                         $hcontainer = $this->definition->getContainerManager();
                         if ($hcontainer->hasBeanByClass($class)) {

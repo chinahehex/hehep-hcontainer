@@ -103,7 +103,7 @@ class BeanTest extends TestCase
         $this->assertTrue($user->argRole->role_name == '难搞');
 
         unset($user->argRole->role_name);
-        $this->assertTrue($user->argRole->role_name == null);
+        $this->assertTrue(!isset($user->argRole->role_name));
 
     }
 
@@ -127,6 +127,28 @@ class BeanTest extends TestCase
 
 
         $this->assertTrue(spl_object_hash($user->userLog)==spl_object_hash($userLog));
+    }
+
+    public function testAnnBean()
+    {
+        if (explode('.',phpversion()) != 8) {
+            $this->assertTrue(true);
+            return;
+        }
+
+        $sysLog = $this->hcontainer->getBean('sysLog');
+        $this->assertTrue($sysLog->ok("hehex") == 'hehex');
+    }
+
+    public function testAnnAfter()
+    {
+        if (explode('.',phpversion()) != 8) {
+            $this->assertTrue(true);
+            return;
+        }
+
+        $sysLog = $this->hcontainer->getBean('sysLog');
+        $this->assertTrue($sysLog->okAction("hehex") == 'hehex');
     }
 
 }

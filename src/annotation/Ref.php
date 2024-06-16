@@ -1,12 +1,15 @@
 <?php
 namespace hehe\core\hcontainer\annotation;
 
-use  hehe\core\hcontainer\ann\base\Annotation;
-
+use hehe\core\hcontainer\ann\base\Ann;
+use hehe\core\hcontainer\ann\base\Annotation;
+use Attribute;
 /**
  * @Annotation("hehe\core\hcontainer\annotation\BeanProcessor")
  */
-class Ref
+#[Annotation("hehe\core\hcontainer\annotation\BeanProcessor")]
+#[Attribute]
+class Ref extends Ann
 {
     public $ref;
 
@@ -18,16 +21,10 @@ class Ref
      *<pre>
      *  略
      *</pre>
-     * @param array $attrs
+     * @param array|string $value
      */
-    public function __construct($attrs = [])
+    public function __construct($value = null,bool $lazy = null,string $ref = null)
     {
-        foreach ($attrs as $attr=>$value) {
-            if ($attr == "value") {
-                $this->ref = $value;
-            } else {
-                $this->$attr = $value;
-            }
-        }
+        $this->injectArgParams(func_get_args(),'ref');
     }
 }

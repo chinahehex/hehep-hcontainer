@@ -111,7 +111,7 @@ class Scan
     {
         $fileClazzList = [];
         foreach ($this->scanRuleList as $scanRule) {
-            $this->doScanResource($scanRule,'',$fileClazzList);
+            $this->doScanResource($scanRule,$fileClazzList);
         }
 
 
@@ -130,7 +130,7 @@ class Scan
     public function scanClassByRule($scanRule)
     {
         $fileClazzList = [];
-        $this->doScanResource($scanRule,'',$fileClazzList);
+        $this->doScanResource($scanRule,$fileClazzList);
 
         return $fileClazzList;
     }
@@ -153,7 +153,7 @@ class Scan
         ]);
 
         $fileClazzList = [];
-        $this->doScanResource($scanRule,'',$fileClazzList);
+        $this->doScanResource($scanRule,$fileClazzList);
 
         return $fileClazzList;
     }
@@ -168,7 +168,7 @@ class Scan
      * @param string $dirName 读取的目录名称
      * @param array $fileClazzList 类文件列表
      */
-    protected function doScanResource($scanRule,$dirName = '',&$fileClazzList)
+    protected function doScanResource($scanRule,&$fileClazzList,$dirName = '')
     {
         if (!empty($dirName)) {
             $baseResourcePath = $scanRule->getBasePath() . DIRECTORY_SEPARATOR . $dirName;
@@ -189,7 +189,7 @@ class Scan
             $filePath = $baseResourcePath . DIRECTORY_SEPARATOR . $filename;
             if (is_dir($filePath)) {
                 // 继续扫描
-                $this->doScanResource($scanRule,!empty($dirName) ? $dirName . DIRECTORY_SEPARATOR . $filename : $filename,$fileClazzList);
+                $this->doScanResource($scanRule,$fileClazzList,!empty($dirName) ? $dirName . DIRECTORY_SEPARATOR . $filename : $filename);
             } else {
                 if ($scanRule->check($filePath)) {
                     $classNamespace = $scanRule->getBaseNamespace() . '\\' . str_replace(DIRECTORY_SEPARATOR,'\\',$dirName) . '\\' . basename($filename,".php");;
