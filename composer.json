@@ -17,7 +17,7 @@
 	},
 	"autoload-dev": {
 		"psr-4": {
-			"hcontainer\\test": "tests/"
+			"hcontainer\\test\\": "tests/"
 		}
 	}
 }
