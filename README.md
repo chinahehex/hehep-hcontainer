@@ -21,7 +21,7 @@ git clone git@github.com:chinahehex/hehep-hcontainer.git
 ```
 - 命令安装：
 ```
-composer require hehepx/hehep-hcontainer
+composer require hehex/hehep-hcontainer
 ```
 - 依赖包
 ```
