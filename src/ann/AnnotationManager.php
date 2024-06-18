@@ -196,7 +196,7 @@ class AnnotationManager
 
         return $this;
     }
-    
+
     public function addFirstProcessor(...$processors):self
     {
         array_unshift($this->firstProcessors, ... $processors);
@@ -287,7 +287,7 @@ class AnnotationManager
         $processorList = $_firstProcessors + $this->processorList;
 
         foreach ($processorList as $processor) {
-            $processor->endScanHandle();
+            $processor->triggerEndScan();
         }
 
         // 清空变量,回收资源

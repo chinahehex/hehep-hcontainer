@@ -45,6 +45,8 @@ class AnnotationProcessor
      */
     protected $annotationsors = [];
 
+    protected $ann_dict = [];
+
     /**
      * 注解处理器
      *<B>说明：</B>
@@ -86,6 +88,7 @@ class AnnotationProcessor
     protected function collectClass($annotation,string $clazz):void
     {
         $this->annotationsors[$clazz]['class'][$clazz][] = $annotation;
+        $this->ann_dict[get_class($annotation)][] = ['class'=>$clazz,'target_type'=>'class','target'=>$clazz,'annotation'=>$annotation];
     }
 
     /**
@@ -97,6 +100,7 @@ class AnnotationProcessor
     protected function collectAttribute($annotation,string $clazz,string $attribute):void
     {
         $this->annotationsors[$clazz]['attribute'][$attribute][] = $annotation;
+        $this->ann_dict[get_class($annotation)][] = ['class'=>$clazz,'target_type'=>'attribute','target'=>$attribute,'annotation'=>$annotation];
     }
 
     /**
@@ -108,6 +112,8 @@ class AnnotationProcessor
     protected function collectMethod($annotation,string $clazz,string $method):void
     {
         $this->annotationsors[$clazz]['method'][$method][] = $annotation;
+
+        $this->ann_dict[get_class($annotation)][] = ['class'=>$clazz,'target_type'=>'method','target'=>$method,'annotation'=>$annotation];
     }
 
     /**
@@ -143,6 +149,47 @@ class AnnotationProcessor
         } else {
             return $this->annotationsors;
         }
+    }
+
+    /**
+     * 获取收集到的注解集合
+     *
+     * 如未设置查找条件,则返回所有注解
+     *
+     * @param string $ann_class 查找的注解类路径
+     * @param string $target_type 查找的类型,比如class,类型,attribute类型,method 方法类型
+     * @param string $target 具体的类型对应的值,比如查找某个方法"doaction"
+     * @return array<class="被注解的类",'target_type'=>'注解作用域(class,method)','target'=>'注解类型值('add')','annotation'=>'注解对象'>
+     */
+    public function getAnns(string $ann_class = '',string $target_type = '',string $target = ''):array
+    {
+        if (empty($ann_class)) {
+            return $this->ann_dict;
+        }
+
+        if (!isset($this->ann_dict[$ann_class])) {
+            return [];
+        }
+
+        if (empty($target_type) || empty($target)) {
+            return $this->ann_dict[$ann_class];
+        }
+
+        $ann_list = [];
+
+        foreach ($this->ann_dict[$ann_class] as $ann) {
+            if (!empty($target_type) && $ann['target_type'] != $target_type) {
+                continue;
+            }
+
+            if (!empty($target) && $ann['target'] != $target) {
+                continue;
+            }
+
+            $ann_list[] = $ann;
+        }
+
+        return $ann_list;
     }
 
     /**
@@ -262,6 +309,15 @@ class AnnotationProcessor
         }
 
         return $values;
+    }
+
+    public function triggerEndScan()
+    {
+
+        $this->endScanHandle();
+
+        // 清空资源
+        $this->annotationsors = [];
     }
 
     // 接触扫描处理

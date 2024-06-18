@@ -33,7 +33,7 @@ class BeanProcessor extends AnnotationProcessor
         }
 
         if (empty($beanId)) {
-            $beanId = lcfirst(basename($clazz));
+            $beanId = $clazz;
         }
 
         $annotationValues['id'] = $beanId;
