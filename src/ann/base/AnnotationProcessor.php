@@ -244,6 +244,24 @@ class AnnotationProcessor
     {
         $annAttributes = [];
 
+        $annAttributes = get_object_vars($annotation);
+
+        return $annAttributes;
+    }
+
+    /**
+     * 获取注解的所有属性值
+     *<B>说明：</B>
+     *<pre>
+     *  略
+     *</pre>
+     * @param object $annotation
+     * @return array
+     */
+    protected function getProperty($annotation)
+    {
+        $annAttributes = [];
+
         $class = new ReflectionClass(get_class($annotation));
         foreach ($class->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
             if (!$property->isStatic()) {

@@ -56,7 +56,7 @@ class AdviceProcessor extends AnnotationProcessor
      */
     public function handleAnnotationClass($annotation,string $class):void
     {
-        $annAttributes = $this->getAttribute($annotation);
+        $annAttributes = $this->getProperty($annotation);
 
         $this->addAspect($class,'',$annAttributes);
     }
@@ -73,7 +73,7 @@ class AdviceProcessor extends AnnotationProcessor
      */
     public function handleAnnotationMethod($annotation,string $class,string $method):void
     {
-        $annAttributes = $this->getAttribute($annotation);
+        $annAttributes = $this->getProperty($annotation);
 
         $this->addAspect($class,$method,$annAttributes);
     }

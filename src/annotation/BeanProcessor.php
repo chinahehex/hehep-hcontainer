@@ -57,7 +57,7 @@ class BeanProcessor extends AnnotationProcessor
 
     public function handleAnnotationClass($annotation,string $class):void
     {
-        $annAttributes = $this->getAttribute($annotation);
+        $annAttributes = $this->getProperty($annotation);
         $bean_conf = $this->annotationToBeanConfig($annAttributes,$class);
         $this->appendDefinition($bean_conf,$class);
     }
