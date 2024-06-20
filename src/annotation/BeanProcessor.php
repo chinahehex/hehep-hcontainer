@@ -12,83 +12,83 @@ use hehe\core\hcontainer\ann\base\AnnotationProcessor;
  */
 class BeanProcessor extends AnnotationProcessor
 {
-    // bean 定义列表
-    protected $beanDefinitionList = [];
+    // Bean定义列表
+    protected $beanDefinitions = [];
 
-    protected $annotationHandlerMap = [
-        'Ref'=>'refHandler'
+    // 自定义注解处理方法
+    protected $annotationHandlers = [
+        'Ref'=>'handleRefAnnotation'
     ];
 
-    public function formatBeanAnnotationValues($annotationValues,$clazz)
+    protected function appendDefinition(array $bean_conf,string $class):void
     {
-
-        if (!empty($annotationValues['id'])) {
-            $beanId = $annotationValues['id'];
+        if (isset($this->beanDefinitions[$class])) {
+            $this->beanDefinitions[$class] = array_merge($this->beanDefinitions[$class],$bean_conf);
         } else {
-            if (isset($this->beanDefinitionList[$clazz])) {
-                if (!empty($this->beanDefinitionList[$clazz]['id'])) {
-                    $beanId = $this->beanDefinitionList[$clazz]['id'];
-                }
+            $this->beanDefinitions[$class] = $bean_conf;
+        }
+    }
+
+    public function annotationToBeanConfig(array $annAttributes,string $class):array
+    {
+        $beanId = '';
+        if (!empty($annAttributes['id'])) {
+            $beanId = $annAttributes['id'];
+        } else {
+            if (isset($this->beanDefinitions[$class]['id'])) {
+                $beanId = $this->beanDefinitions[$class]['id'];
             }
         }
 
         if (empty($beanId)) {
-            $beanId = $clazz;
+            $beanId = $class;
         }
 
-        $annotationValues['id'] = $beanId;
-        $annotationValues['class'] = $clazz;
+        $annAttributes['id'] = $beanId;
+        $annAttributes['class'] = $class;
 
-        return $this->formatBeanDefinition($annotationValues);
-    }
-
-    public function annotationHandlerClazz($annotation,$clazz)
-    {
-        $annotationValues = $this->getAttribute($annotation);
-        $beanValues = $this->formatBeanAnnotationValues($annotationValues,$clazz);
-        $this->appendDefinition($beanValues,$clazz);
-    }
-
-    protected function appendDefinition($beanValues,$clazz)
-    {
-        if (isset($this->beanDefinitionList[$clazz])) {
-            $this->beanDefinitionList[$clazz] = array_merge($this->beanDefinitionList[$clazz],$beanValues);
-        } else {
-            $this->beanDefinitionList[$clazz] = $beanValues;
+        $bean_conf = [];
+        foreach ($annAttributes as $index=>$val) {
+            $bean_conf[$index] = $val;
         }
+
+        return $bean_conf;
     }
 
-
-    public function refHandler($annotation,$clazz,$attribute)
+    public function handleAnnotationClass($annotation,string $class):void
     {
+        $annAttributes = $this->getAttribute($annotation);
+        $bean_conf = $this->annotationToBeanConfig($annAttributes,$class);
+        $this->appendDefinition($bean_conf,$class);
+    }
 
-        //$annotationValues = $this->getAttribute($annotation);
-        $attributeValues = [
-            $attribute=>$annotation,
+    /**
+     * 处理Ref 注解
+     * @param $annotation
+     * @param string $class
+     * @param string $property
+     */
+    public function handleRefAnnotation($annotation,string $class,string $property):void
+    {
+        $annAttributes = [
+            $property=>$annotation,
         ];
 
-        $beanValues = $this->formatBeanAnnotationValues($attributeValues,$clazz);
-        $this->appendDefinition($beanValues,$clazz);
+        $bean_conf = $this->annotationToBeanConfig($annAttributes,$class);
+        $this->appendDefinition($bean_conf,$class);
     }
 
-    protected function formatBeanDefinition($annotationValues)
-    {
-        $beanDefinition = [];
-        foreach ($annotationValues as $name=>$value) {
-            $beanDefinition[$name] = $value;
-        }
 
-        return $beanDefinition;
-    }
-
-    public function endScanHandle()
+    public function handleProcessorFinish():void
     {
         $beanDefinitionList = [];
-        foreach ($this->beanDefinitionList as $beanDefinition) {
+        foreach ($this->beanDefinitions as $beanDefinition) {
             $beanDefinitionList[$beanDefinition['id']] = $beanDefinition;
         }
 
         $this->getContainerManager()->batchRegister($beanDefinitionList);
+
+        $this->beanDefinitions = [];
     }
 
 }

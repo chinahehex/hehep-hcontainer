@@ -1,7 +1,6 @@
 <?php
 namespace hehe\core\hcontainer\ann\base;
 
-use Doctrine\Common\Annotations\AnnotationReader;
 use ReflectionClass;
 
 /**
@@ -32,18 +31,17 @@ class AnnotationClass
      * @var string
      */
     protected $reflectionClass = '';
-    
+
     /**
      * 注解解析类
      * @var AnnotationParser
      */
     protected $annotationParser;
 
-    public function __construct(string $clazz,annotationParser $annotationParser)
+    public function __construct(string $clazz,AnnotationParser $annotationParser)
     {
         $this->clazz = $clazz;
         $this->annotationParser = $annotationParser;
-
         $this->reflectionClass = new ReflectionClass($this->clazz);
     }
 
@@ -58,7 +56,7 @@ class AnnotationClass
     {
         $this->parseClassAnnotation();
         $this->parseMethodAnnotation();
-        $this->parseAttributeAnnotation();
+        $this->parsePropertyAnnotation();
     }
 
     /**
@@ -71,48 +69,18 @@ class AnnotationClass
     protected function parseClassAnnotation():void
     {
 
-        $this->parseDoctrineClassAnnotation($this->reflectionClass);
-        $this->parsePhpClassAnnotation($this->reflectionClass);
-    }
+        $annotations = $this->annotationParser->getClassAnnotations($this->reflectionClass);
 
-    protected function parseDoctrineClassAnnotation(ReflectionClass $reflectionClass)
-    {
-        $classAnnotations  = $this->annotationParser->getClassAnnotations($reflectionClass);
-        foreach ($classAnnotations as $myAnnotation) {
-            $annotationMeta = $this->annotationParser->getAnnotationMeta($myAnnotation);
-            if ($annotationMeta != null && $annotationMeta->effectiveTarget(Annotation::TARGET_CLASS)) {
-                $annotationProcessor = $this->annotationParser->getAnnotationProcessor($annotationMeta);
-                if ($annotationProcessor !== null) {
-                    $annotationProcessor->handlerClazz($myAnnotation,$this->clazz);
-                }
+        foreach ($annotations as $annotation) {
+            /**@var AnnotationProcessor $processor **/
+            list($target,$myAnnotation,$processor) =  array_values($annotation);
+            if ($processor != null) {
+                $processor->handleClass($myAnnotation,$target);
+            } else if (method_exists($myAnnotation,'handleClass')) {
+                $myAnnotation->handleClass($this->clazz);
             }
         }
-    }
 
-    protected function parsePhpClassAnnotation(ReflectionClass $reflectionClass)
-    {
-        // php8 注解
-        if (method_exists($reflectionClass,'getAttributes')) {
-            $attributes = $reflectionClass->getAttributes();
-            if ($reflectionClass->getName() === Annotation::class || empty($attributes)) {
-                return;
-            }
-
-            foreach ($attributes as $attribute) {
-                $myAnnotation = $attribute->newInstance();
-                if ($myAnnotation instanceof \Attribute || $myAnnotation instanceof Annotation) {
-                    continue;
-                }
-
-                $annotationMeta = $this->annotationParser->getAnnotationMeta($myAnnotation);
-                if ($annotationMeta != null && $annotationMeta->effectiveTarget(Annotation::TARGET_CLASS)) {
-                    $annotationProcessor = $this->annotationParser->getAnnotationProcessor($annotationMeta);
-                    if ($annotationProcessor !== null) {
-                        $annotationProcessor->handlerClazz($myAnnotation,$this->clazz);
-                    }
-                }
-            }
-        }
     }
 
     /**
@@ -126,51 +94,18 @@ class AnnotationClass
     {
         $reflectionMethods = $this->reflectionClass->getMethods();
         foreach ($reflectionMethods as $reflectionMethod) {
-            $this->parseDoctrineMethodAnnotation($reflectionMethod);
-            $this->parsePhpMethodAnnotation($reflectionMethod);
-        }
-    }
-
-    protected function parseDoctrineMethodAnnotation(\ReflectionMethod $reflectionMethod):void
-    {
-        $annotationMethodList = $this->annotationParser->getMethodAnnotations($reflectionMethod);
-        foreach ($annotationMethodList as $myAnnotation) {
-            $annotationMeta = $this->annotationParser->getAnnotationMeta($myAnnotation);
-            if ($annotationMeta != null && $annotationMeta->effectiveTarget(Annotation::TARGET_METHOD)) {
-                $annotationProcessor = $this->annotationParser->getAnnotationProcessor($annotationMeta);
-                if ($annotationProcessor !== null) {
-                    $annotationProcessor->handlerMethod($myAnnotation,$this->clazz,$reflectionMethod->getName());
+            $annotations = $this->annotationParser->getMethodAnnotations($reflectionMethod);
+            foreach ($annotations as $annotation) {
+                /** @var AnnotationProcessor $processor **/
+                list($target,$myAnnotation,$processor) =  array_values($annotation);
+                if ($processor != null) {
+                    $processor->handleMethod($myAnnotation,$this->clazz,$target);
+                } else if (method_exists($myAnnotation,'handleMethod')) {
+                    $myAnnotation->handleMethod($myAnnotation,$this->clazz,$target);
                 }
             }
         }
     }
-
-    protected function parsePhpMethodAnnotation(\ReflectionMethod $reflectionMethod):void
-    {
-        if (method_exists($reflectionMethod,'getAttributes')) {
-            $attributes = $reflectionMethod->getAttributes();
-            if ($reflectionMethod->getName() === Annotation::class || empty($attributes)) {
-                return;
-            }
-
-            foreach ($attributes as $attribute) {
-                $myAnnotation = $attribute->newInstance();
-                if ($myAnnotation instanceof \Attribute || $myAnnotation instanceof Annotation) {
-                    continue;
-                }
-
-                $annotationMeta = $this->annotationParser->getAnnotationMeta($myAnnotation);
-                if ($annotationMeta != null && $annotationMeta->effectiveTarget(Annotation::TARGET_METHOD)) {
-                    $annotationProcessor = $this->annotationParser->getAnnotationProcessor($annotationMeta);
-                    if ($annotationProcessor !== null) {
-                        $annotationProcessor->handlerMethod($myAnnotation,$this->clazz,$reflectionMethod->getName());
-                    }
-                }
-            }
-        }
-    }
-
-
 
     /**
      * 解析属性注解
@@ -179,54 +114,24 @@ class AnnotationClass
      *  略
      *</pre>
      */
-    protected function parseAttributeAnnotation():void
+    protected function parsePropertyAnnotation():void
     {
         $properties = $this->reflectionClass->getProperties();
         foreach ($properties as $propertie) {
-            $this->parseDoctrineAttributeAnnotation($propertie);
-            $this->parsePhpAttributeAnnotation($propertie);
-        }
-
-    }
-
-    protected function parseDoctrineAttributeAnnotation(\ReflectionProperty $propertie):void
-    {
-        $annotationPropertieList = $this->annotationParser->getPropertyAnnotations($propertie);
-        foreach ($annotationPropertieList as $myAnnotation) {
-            $annotationMeta = $this->annotationParser->getAnnotationMeta($myAnnotation);
-            if ($annotationMeta != null && $annotationMeta->effectiveTarget(Annotation::TARGET_FIELD)) {
-                $annotationProcessor = $this->annotationParser->getAnnotationProcessor($annotationMeta);
-                if ($annotationProcessor !== null) {
-                    $annotationProcessor->handlerAttribute($myAnnotation,$this->clazz,$propertie->getName());
+            $annotations = $this->annotationParser->getPropertyAnnotations($propertie);
+            foreach ($annotations as $annotation) {
+                /** @var AnnotationProcessor $processor **/
+                list($target,$myAnnotation,$processor) =  array_values($annotation);
+                if ($processor != null) {
+                    $processor->handleProperty($myAnnotation,$this->clazz,$target);
+                } else if (method_exists($myAnnotation,'handleProperty')) {
+                    $myAnnotation->handleProperty($myAnnotation,$this->clazz,$target);
                 }
             }
         }
     }
 
-    protected function parsePhpAttributeAnnotation(\ReflectionProperty $propertie):void
-    {
-        if (method_exists($propertie,'getAttributes')) {
-            $attributes = $propertie->getAttributes();
-            if ($propertie->getName() === Annotation::class || empty($attributes)) {
-                return;
-            }
 
-            foreach ($attributes as $attribute) {
-                $myAnnotation = $attribute->newInstance();
-                if ($myAnnotation instanceof \Attribute || $myAnnotation instanceof Annotation) {
-                    continue;
-                }
-
-                $annotationMeta = $this->annotationParser->getAnnotationMeta($myAnnotation);
-                if ($annotationMeta != null && $annotationMeta->effectiveTarget(Annotation::TARGET_FIELD)) {
-                    $annotationProcessor = $this->annotationParser->getAnnotationProcessor($annotationMeta);
-                    if ($annotationProcessor !== null) {
-                        $annotationProcessor->handlerAttribute($myAnnotation,$this->clazz,$propertie->getName());
-                    }
-                }
-            }
-        }
-    }
 
 
 }

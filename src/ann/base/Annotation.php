@@ -17,7 +17,7 @@ class Annotation extends Ann
 
     const TARGET_METHOD = 'METHOD';
 
-    const TARGET_FIELD = 'FIELD';
+    const TARGET_PROPERTY = 'PROPERTY';
 
     /**
      * 处理器类路径

@@ -4,7 +4,13 @@ use hehe\core\hcontainer\annotation\Bean;
 use hehe\core\hcontainer\annotation\Ref;
 use hehe\core\hcontainer\aop\annotation\After;
 
-#[Bean("sysLog")]
+/**
+ * Class SysLog
+ * @package hcontainer\tests\common
+ *
+ *
+ */
+#[Bean("sysLog",_onProxy:true)]
 #[After(behaviors:"hcontainer\\tests\common\LogBehavior@log",pointcut:".+Action")]
 class SysLog extends BaseLog
 {

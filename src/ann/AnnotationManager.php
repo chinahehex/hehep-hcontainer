@@ -287,11 +287,14 @@ class AnnotationManager
         $processorList = $_firstProcessors + $this->processorList;
 
         foreach ($processorList as $processor) {
-            $processor->triggerEndScan();
+            if (method_exists($processor,'handleProcessor')) {
+                $processor->handleProcessor();
+            } else if (method_exists($processor,'handleScanFinish')) {
+                $processor->handleScanFinish();
+            }
         }
 
         // 清空变量,回收资源
-        $this->processorList = [];
         $this->firstProcessors = [];
         $this->customProcessors = [];
     }

@@ -1,6 +1,14 @@
 <?php
 namespace hcontainer\tests\common;
+use hehe\core\hcontainer\annotation\Bean;
 use hehe\core\hcontainer\annotation\Ref;
+
+/**
+ *
+ * Class UserBean
+ * @package hcontainer\tests\common
+ * @Bean("role")
+ */
 class RoleBean
 {
     /**

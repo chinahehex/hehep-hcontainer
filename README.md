@@ -447,7 +447,7 @@ class UserBean
 - 示例代码
 ```php
 
-// bean 定义
+// Bean 定义
 $beans = [
     'user'=>[
        'class'=>'user\service\user',
@@ -516,17 +516,21 @@ use hehe\core\hcontainer\ann\base\AnnotationProcessor;
 class BeanProcessor extends AnnotationProcessor
 {
     // 实现以下方法即可
+    
+    // 统一处理类,方法，类类型注解 $target_type = class,method,property
+    public function handleAnnotation($annotation,string $class,string $target,string $target_type):void{}
+    
     // 注解类方式
-    public function annotationHandlerClazz($annotation,$clazz){}
+    public function handleAnnotationClass($annotation,string $class):void{}
     
     // 注解类方法方式
-    public function annotationHandlerMethod($annotation,$clazz,$method){}
+    public function handleAnnotationMethod($annotation,string $class,string $method):void{}
     
     // 注解类属性方式
-    public function annotationHandlerAttribute($annotation,$clazz,$attribute){}
+    public function handleAnnotationProperty($annotation,string $class,string $property):void{}
     
-    // 扫描结束处理方法
-    public function endScanHandle()
+    // 处理器结束事件处理方法
+    public function handleProcessorFinish()
     {
         // 注册bean信息到容器
     }
@@ -561,7 +565,7 @@ class Bean
     public $_scope;
     public $_single;
 
-    public function __construct($attrs = [])
+    public function __construct($value,$_scope = null,$_single = null)
     {
         foreach ($attrs as $attr=>$value) {
             if ($attr == "value") {
@@ -735,15 +739,35 @@ class UserBean
 ```php
 class BeanProcessor extends AnnotationProcessor
 {
+    // 自定义注解处理方法
+    protected $annotationHandlers = [
+        'Ref'=>'handleRefAnnotation'
+    ];
+    
     // 实现以下方法即可
+    
+    // 统一处理类,方法，类类型注解 $target_type = class,method,property
+    public function handleAnnotation($annotation,string $class,string $target,string $target_type):void{}
+    
     // 注解类方式
-    public function annotationHandlerClazz($annotation,$clazz){}
+    public function handleAnnotationClass($annotation,string $class):void{}
     
     // 注解类方法方式
-    public function annotationHandlerMethod($annotation,$clazz,$method){}
+    public function handleAnnotationMethod($annotation,string $class,string $method):void{}
     
     // 注解类属性方式
-    public function annotationHandlerAttribute($annotation,$clazz,$attribute){}
+    public function handleAnnotationProperty($annotation,string $class,string $property):void{}
+    
+    public function handleRefAnnotation($annotation,string $class,string $target,string $target_type)
+    {
+        
+    }
+    
+    // 处理器结束事件处理方法
+    public function handleProcessorFinish()
+    {
+        // 注册bean信息到容器
+    }
 }
 ```
 ### 定义注解器
@@ -929,6 +953,21 @@ class User
 }
 
 ```
+
+### 未定义注解处理器
+- 说明
+```
+
+```
+
+- 示例代码
+```php
+
+```
+
+
+
+
 
 ### 默认注解器列表
 

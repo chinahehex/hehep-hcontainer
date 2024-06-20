@@ -6,6 +6,8 @@ use hehe\core\hcontainer\ann\AnnotationManager;
 use ReflectionClass;
 use ReflectionMethod;
 use ReflectionProperty;
+
+
 /**
  * 注解解析类
  *<B>说明：</B>
@@ -57,35 +59,110 @@ class annotationParser
         return $this->annotationManager->getProcessor($processorClass);
     }
 
-    public function getClassAnnotations(ReflectionClass $reflectionClass)
-    {
-        $classAnnotations = [];
-        if (!is_null($this->annotationReader)) {
-            $classAnnotations  = $this->annotationReader->getClassAnnotations($reflectionClass);
-        }
 
-        return $classAnnotations;
+    public function getClassAnnotations(ReflectionClass $reflectionClass):array
+    {
+        $annotations = [];
+
+        $annotations = array_merge($annotations,$this->getDoctrineClassAnnotations($reflectionClass));
+        $annotations = array_merge($annotations,$this->getPhpClassAnnotations($reflectionClass));
+
+        return $annotations;
     }
 
     public function getMethodAnnotations(ReflectionMethod $reflectionMethod)
     {
+        $annotations = [];
 
-        $methodAnnotations = [];
-        if (!is_null($this->annotationReader)) {
-            $methodAnnotations  = $this->annotationReader->getMethodAnnotations($reflectionMethod);
-        }
+        $annotations = array_merge($annotations,$this->getDoctrineMethodAnnotations($reflectionMethod));
+        $annotations = array_merge($annotations,$this->getPhpMethodAnnotations($reflectionMethod));
 
-        return $methodAnnotations;
+        return $annotations;
     }
 
     public function getPropertyAnnotations(ReflectionProperty $propertie)
     {
-        $propertieAnnotations = [];
-        if (!is_null($this->annotationReader)) {
-            $propertieAnnotations  = $this->annotationReader->getPropertyAnnotations($propertie);
+        $annotations = [];
+
+        $annotations = array_merge($annotations,$this->getDoctrinePropertyAnnotations($propertie));
+        $annotations = array_merge($annotations,$this->getPhpPropertyAnnotations($propertie));
+
+        return $annotations;
+    }
+
+    public function getDoctrineClassAnnotations(ReflectionClass $reflectionClass):array
+    {
+        $annotations = [];
+
+        if (is_null($this->annotationReader)) {
+            return $annotations;
         }
 
-        return $propertieAnnotations;
+        $classAnnotations  = $this->annotationReader->getClassAnnotations($reflectionClass);
+        foreach ($classAnnotations as $myAnnotation) {
+            $annotationProcessor = null;
+            $annotationMeta = $this->getAnnotationMeta($myAnnotation);
+            if ($annotationMeta != null) {
+                if (!$annotationMeta->effectiveTarget(Annotation::TARGET_CLASS)) {
+                    continue;
+                }
+                $annotationProcessor = $this->getAnnotationProcessor($annotationMeta);
+            }
+
+            $annotations[] = ['target'=>$reflectionClass->getName(),'annotation'=>$myAnnotation,'processor'=>$annotationProcessor];
+        }
+
+        return $annotations;
+    }
+
+    public function getDoctrineMethodAnnotations(ReflectionMethod $reflectionMethod)
+    {
+        $annotations = [];
+
+        if (is_null($this->annotationReader)) {
+            return $annotations;
+        }
+
+        $annotationMethodList = $this->annotationReader->getMethodAnnotations($reflectionMethod);
+        foreach ($annotationMethodList as $myAnnotation) {
+            $annotationProcessor = null;
+            $annotationMeta = $this->getAnnotationMeta($myAnnotation);
+            if ($annotationMeta != null) {
+                if (!$annotationMeta->effectiveTarget(Annotation::TARGET_METHOD)) {
+                    continue;
+                }
+                $annotationProcessor = $this->getAnnotationProcessor($annotationMeta);
+            }
+
+            $annotations[] = ['target'=>$reflectionMethod->getName(),'annotation'=>$myAnnotation,'processor'=>$annotationProcessor];
+        }
+
+        return $annotations;
+    }
+
+    public function getDoctrinePropertyAnnotations(ReflectionProperty $propertie)
+    {
+        $annotations = [];
+
+        if (is_null($this->annotationReader)) {
+            return $annotations;
+        }
+
+        $annotationPropertieList = $this->annotationReader->getPropertyAnnotations($propertie);
+        foreach ($annotationPropertieList as $myAnnotation) {
+            $annotationProcessor = null;
+            $annotationMeta = $this->getAnnotationMeta($myAnnotation);
+            if ($annotationMeta != null) {
+                if (!$annotationMeta->effectiveTarget(Annotation::TARGET_PROPERTY)) {
+                    continue;
+                }
+                $annotationProcessor = $this->getAnnotationProcessor($annotationMeta);
+            }
+
+            $annotations[] = ['target'=>$propertie->getName(),'annotation'=>$myAnnotation,'processor'=>$annotationProcessor];
+        }
+
+        return $annotations;
     }
 
     /**
@@ -111,6 +188,104 @@ class annotationParser
         }
 
         return $annotationMeta;
+    }
+
+    protected function getPhpClassAnnotations(ReflectionClass $reflectionClass):array
+    {
+        $annotations = [];
+        if (method_exists($reflectionClass,'getAttributes')) {
+            $attributes = $reflectionClass->getAttributes();
+            if ($reflectionClass->getName() === Annotation::class || empty($attributes)) {
+                return $annotations;
+            }
+
+            foreach ($attributes as $attribute) {
+                $myAnnotation = $attribute->newInstance();
+                if ($myAnnotation instanceof \Attribute || $myAnnotation instanceof Annotation) {
+                    continue;
+                }
+
+                $annotationProcessor = null;
+
+                // 判断目标
+                $annotationMeta = $this->getAnnotationMeta($myAnnotation);
+                if ($annotationMeta != null) {
+                    if (!$annotationMeta->effectiveTarget(Annotation::TARGET_CLASS)) {
+                        continue;
+                    }
+                    $annotationProcessor = $this->getAnnotationProcessor($annotationMeta);
+                }
+
+                $annotations[] = ['target'=>$reflectionClass->getName(),'annotation'=>$myAnnotation,'processor'=>$annotationProcessor];
+            }
+        }
+
+        return $annotations;
+    }
+
+    protected function getPhpMethodAnnotations(\ReflectionMethod $reflectionMethod):array
+    {
+        $annotations = [];
+        if (method_exists($reflectionMethod,'getAttributes')) {
+            $attributes = $reflectionMethod->getAttributes();
+            if ($reflectionMethod->getName() === Annotation::class || empty($attributes)) {
+                return $annotations;
+            }
+
+            foreach ($attributes as $attribute) {
+                $myAnnotation = $attribute->newInstance();
+                if ($myAnnotation instanceof \Attribute || $myAnnotation instanceof Annotation) {
+                    continue;
+                }
+
+                $annotationProcessor = null;
+
+                $annotationMeta = $this->getAnnotationMeta($myAnnotation);
+                if ($annotationMeta != null ) {
+                    if (!$annotationMeta->effectiveTarget(Annotation::TARGET_METHOD)) {
+                        continue;
+                    }
+
+                    $annotationProcessor = $this->getAnnotationProcessor($annotationMeta);
+                }
+
+                $annotations[] = ['target'=>$reflectionMethod->getName(),'annotation'=>$myAnnotation,'processor'=>$annotationProcessor];
+            }
+        }
+
+        return $annotations;
+    }
+
+    protected function getPhpPropertyAnnotations(\ReflectionProperty $propertie):array
+    {
+        $annotations = [];
+        if (method_exists($propertie,'getAttributes')) {
+            $attributes = $propertie->getAttributes();
+            if ($propertie->getName() === Annotation::class || empty($attributes)) {
+                return $annotations;
+            }
+
+            foreach ($attributes as $attribute) {
+                $myAnnotation = $attribute->newInstance();
+                if ($myAnnotation instanceof \Attribute || $myAnnotation instanceof Annotation) {
+                    continue;
+                }
+
+                $annotationProcessor = null;
+                $annotationMeta = $this->getAnnotationMeta($myAnnotation);
+                if ($annotationMeta != null) {
+                    if (!$annotationMeta->effectiveTarget(Annotation::TARGET_PROPERTY)) {
+                        continue;
+                    }
+
+                    $annotationProcessor = $this->getAnnotationProcessor($annotationMeta);
+                }
+
+                $annotations[] = ['target'=>$propertie->getName(),'annotation'=>$myAnnotation,'processor'=>$annotationProcessor];
+            }
+        }
+
+        return $annotations;
     }
 
     protected function getPhpAnnotationMeta(ReflectionClass $reflectionClass,$annotationName)
