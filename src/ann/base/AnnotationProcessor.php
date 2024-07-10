@@ -242,8 +242,6 @@ class AnnotationProcessor
      */
     protected function getAttribute($annotation)
     {
-        $annAttributes = [];
-
         $annAttributes = get_object_vars($annotation);
 
         return $annAttributes;
@@ -258,15 +256,20 @@ class AnnotationProcessor
      * @param object $annotation
      * @return array
      */
-    protected function getProperty($annotation)
+    protected function getProperty($annotation,bool $getNull = true)
     {
         $annAttributes = [];
-
         $class = new ReflectionClass(get_class($annotation));
         foreach ($class->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
             if (!$property->isStatic()) {
                 $propertieName = $property->getName();
-                $annAttributes[$propertieName] = $annotation->$propertieName;
+                if (!$getNull) {
+                    if (!is_null($annotation->$propertieName)) {
+                        $annAttributes[$propertieName] = $annotation->$propertieName;
+                    }
+                } else {
+                    $annAttributes[$propertieName] = $annotation->$propertieName;
+                }
             }
         }
 

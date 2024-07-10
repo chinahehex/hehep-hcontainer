@@ -34,6 +34,16 @@ class TestCase extends \PHPUnit\Framework\TestCase
 
     }
 
+    protected function checkVersion()
+    {
+        if ((explode('.',phpversion()))[0] != 8) {
+            $this->assertTrue(true);
+            return false;
+        } else {
+            return true;
+        }
+    }
+
     public function register($res_path)
     {
         $comm = require __DIR__ . '/res/' . $res_path;
