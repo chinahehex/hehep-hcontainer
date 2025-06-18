@@ -1,17 +1,17 @@
 <?php
 namespace hehe\core\hcontainer\annotation;
 
-use hehe\core\hcontainer\ann\base\Ann;
-use  hehe\core\hcontainer\ann\base\Annotation;
+use hehe\core\hcontainer\ann\base\BaseAnnotation;
+use hehe\core\hcontainer\ann\base\Annotation;
 use Attribute;
 /**
  * @Annotation("hehe\core\hcontainer\annotation\BeanProcessor")
  */
 #[Annotation("hehe\core\hcontainer\annotation\BeanProcessor")]
 #[Attribute]
-class Bean extends Ann
+class Bean extends BaseAnnotation
 {
-    public $id;
+    public $_id;
 
     public $_attrs;
 
@@ -48,10 +48,10 @@ class Bean extends Ann
         bool $_single = null,
         array $_args = null,
         array $_attrs = null,
-        string $id = null
+        string $_id = null
     )
     {
-        $this->injectArgParams(func_get_args(),'id');
+        $this->injectArgParams(func_get_args(),'_id');
         
     }
 }

@@ -52,7 +52,7 @@ class AnnotationClass
      *  略
      *</pre>
      */
-    public function parse()
+    public function parse():void
     {
         $this->parseClassAnnotation();
         $this->parseMethodAnnotation();

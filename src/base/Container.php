@@ -19,7 +19,7 @@ class Container
      *</pre>
      * @var string
      */
-    public $scope = '';
+    protected $scope = '';
 
     /**
      * bean 对象列表

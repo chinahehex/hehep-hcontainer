@@ -2,7 +2,7 @@
 
 return [
 //    'user'=>[
-//        'id'=>'user',
+//        //'id'=>'user',
 //        'class'=>'hcontainer\tests\common\UserBean',
 //
 //        'refRole'=>'<ref::role>',
@@ -12,7 +12,7 @@ return [
 //    ],
 //
 //    'role'=>[
-//        'id'=>'role',
+//        //'id'=>'role',
 //        'class'=>'hcontainer\tests\common\RoleBean',
 //    ],
 ];

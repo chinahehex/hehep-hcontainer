@@ -2,6 +2,7 @@
 namespace hehe\core\hcontainer\annotation;
 
 use hehe\core\hcontainer\ann\base\AnnotationProcessor;
+use hehe\core\hcontainer\base\Definition;
 
 /**
  * Bean注解处理器
@@ -32,11 +33,11 @@ class BeanProcessor extends AnnotationProcessor
     public function annotationToBeanConfig(array $annAttributes,string $class):array
     {
         $beanId = '';
-        if (!empty($annAttributes['id'])) {
-            $beanId = $annAttributes['id'];
+        if (!empty($annAttributes[Definition::SYS_ATTR_ID])) {
+            $beanId = $annAttributes[Definition::SYS_ATTR_ID];
         } else {
-            if (isset($this->beanDefinitions[$class]['id'])) {
-                $beanId = $this->beanDefinitions[$class]['id'];
+            if (isset($this->beanDefinitions[$class][Definition::SYS_ATTR_ID])) {
+                $beanId = $this->beanDefinitions[$class][Definition::SYS_ATTR_ID];
             }
         }
 
@@ -44,7 +45,7 @@ class BeanProcessor extends AnnotationProcessor
             $beanId = $class;
         }
 
-        $annAttributes['id'] = $beanId;
+        $annAttributes[Definition::SYS_ATTR_ID] = $beanId;
         $annAttributes['class'] = $class;
 
         $bean_conf = [];
@@ -83,7 +84,7 @@ class BeanProcessor extends AnnotationProcessor
     {
         $beanDefinitionList = [];
         foreach ($this->beanDefinitions as $beanDefinition) {
-            $beanDefinitionList[$beanDefinition['id']] = $beanDefinition;
+            $beanDefinitionList[$beanDefinition[Definition::SYS_ATTR_ID]] = $beanDefinition;
         }
 
         $this->getContainerManager()->batchRegister($beanDefinitionList);

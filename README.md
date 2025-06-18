@@ -1,12 +1,12 @@
 # hehep-hcontainer
 
 ## 介绍
-- hehep-hcontainer 是一个 di容器,提供类的实例化工具组件
-- 支持注释注解
-- 支持PHP原生注解
-- 支持类属性,构造参数依赖注入
-- 支持AOP切面
-- 支持Bean作用域
+> hehep-hcontainer 是一个 di容器,提供类的实例化工具组件  
+> 支持注释注解  
+> 支持PHP原生注解  
+> 支持类属性,构造参数依赖注入  
+> 支持AOP切面  
+> 支持Bean作用域  
 
 ## 安装
 - 直接下载:
@@ -19,33 +19,38 @@ git clone git@gitee.com:chinahehex/hehep-hcontainer.git
 ```
 git clone git@github.com:chinahehex/hehep-hcontainer.git
 ```
+
 - 命令安装：
 ```
-composer require hehex/hehep-hcontainer
+composer require hehex/hehep-hcontainer  
 ```
-- 依赖包
-```
-如果需要注释注解,则需要安装doctrine
-composer require "doctrine/annotations"
 
-如是PHP8,可以使用PHP原生注解,或两者同时使用
-```
+- 依赖包
+> 如果需要注释注解,则需要安装doctrine  
+> composer require "doctrine/annotations"  
+> 如是PHP8,可以使用PHP原生注解,或两者同时使用  
+
 ## Bean组件
 
 ### 常规定义Bean
 ```php
 $beanDefinition = [
-    'id'=>'user',// bean 别名
-    'class'=>'\site\service\User\User', # 类路径
+    '_id'=>'user',// bean 别名
+    'class'=>'\site\service\User\User', # 类路径,
+    '_boot'=>false, // 是否提前实例化对象
     '_single'=> true, // 是否单例,默认是单例,
     '_scope'=> 'request', // 对象作用域,request 请求作用域
     '_init'=> 'init', // 初始化方法, 对象创建后调用设置的方法(设置属性完成后调用),
     '_onProxy'=>false,// bean 是否启用代理类,一般用于切面aop
     '_proxyHandler'=>"",// 代理事件,每调用一次对象方法,自动触发代理事件
-    '_args'=> [], // true 构造方法参数，支持索引，关联数组
+    '_args'=> [], // true 所有属性通过一个构造参数注入,这个参数必须是数组，支持索引，关联数组
     '_attrs'=> [  // 类其他属性，直接注入
         'attr1'=>'26',
         'attr2'=>'26',
+    ],
+    // 绑定其他bean或接口,即user与LoggerInterface绑定，通过LoggerInterface可获取bean对象
+    '_bind'=>[
+        Psr\Log\LoggerInterface::class,
     ],
     'attr3'=>'类其他属性3',
     'attr4'=>'类其他属性4',
@@ -54,30 +59,38 @@ $beanDefinition = [
 ];
 ```
 
-### 注解定义bean
-- 注解说明
-```
-通过@Bean注解器对bean进行描述,注解器属性与"常规定义Bean"一致
-基本格式如下
-@Bean("user") 定义bean id的属性
-@Bean("user",_scope="app") 定义bean 作用域属性
-@Bean("user",_scope=true,_onProxy=true)
+### 基本示例
+```php
+use hehe\core\hcontainer\ContainerManager;
+$hcontainer = new ContainerManager();
+$hcontainer->startup();// 启动容器
+
+$hcontainer->register('user',[]);// 注册user bean
+$hcontainer->get('user',[]);// 获取user bean对象
+
 
 ```
+
+### 注解定义bean
+- 注解说明
+
+> 通过@Bean注解器对bean进行描述,注解器属性与"常规定义Bean"一致  
+> 基本格式如下  
+> @Bean("user") 定义bean id的属性  
+> @Bean("user",_scope="app") 定义bean 作用域属性  
+> @Bean("user",_scope=true,_onProxy=true)  
+
 - 示例代码
 ```php
 namespace app\services\UserBean;
 use hehe\core\hcontainer\annotation\Bean;
 
 /**
- * Class UserBean
- * @package hcontainer\tests\common
  * @Bean('user')
  */
 class UserBean
 {
     /**
-     * 姓名
      * @var
      */
     public $name;
@@ -101,7 +114,7 @@ $hcontainer->register('user',UserinfoBean::class);
 $hcontainer->register('user',UserinfoBean::class,['_single'=>true]);
 
 // 批量注册
- $beans = [
+$beans = [
     // 格式['bean别名'=>["class"=>"bean 类路径","其他参数1"=>'xxx']]
     'userinfo'=>['class'=>UserinfoBean::class]
 ];
@@ -135,16 +148,14 @@ $userinfo = $hcontainer->make('user',["name"=>"hehe"]);
 
 ### Bean作用域
 - 说明
-```
-bean 默认只有一种作用域,即永久作用域,如需实现其他作用域容器,则可通过
-设置作用域容器事件来实现,比如需实现"request" 请求级别的作用域,则需要设置request对应的容器获取事件
-```
 
-- 完整示例代码
+> bean 默认只有一种作用域,即永久作用域,如需实现其他作用域容器,则可通过  
+> 设置作用域容器事件来实现,比如需实现"request" 请求级别的作用域,则需要设置request对应的容器获取事件  
+
+- 示例代码
 ```php
 use hehe\core\hcontainer\ContainerManager;
-$hcontainer = new ContainerManager();
-// 定义request 级别类(每次请求完成,此对象都会被回收)
+// 定义App应用类,每次请求会创建新App对象,当请求结束,则App被注销,App的容器container也被注销
 class App
 {
     public $container;
@@ -156,6 +167,7 @@ class App
     }
 }
 
+$hcontainer = new ContainerManager();
 $app = new App($hcontainer);
 
 // 设置作用域容器事件
@@ -181,109 +193,90 @@ unset($app);
 
 ```
 
+### 绑定类或接口
+```php
+use hehe\core\hcontainer\ContainerManager;
+$hcontainer = new ContainerManager();
+
+$beans = [
+    'hlog'=>[
+        'class'=>'hehe\core\hlogger\LogManager',
+        '_bind'=>[Psr\Log\LoggerInterface::class]
+     ],
+];
+
+$hcontainer->batchRegister($beans);
+
+// 通过id 获取bean对象
+$hlog = $hcontainer->getBean('hlog');
+
+// 通过接口获取bean对象
+$hlog = $hcontainer->getBeanByClass(Psr\Log\LoggerInterface::class);
+
+
+```
+
 ## 依赖注入
 
 ### 构造函数注入
 - 说明
-```
-构造函数参数有三种方式注入Bean
-方式1:定义参数类型为Bean类
-方式2:参数变量默认值为<ref:xxxx>,xxx 为指定的bean标识
-方式3:参数变量默认值为<lazy:xxxx>,xxx 为指定的bean标识
-```
+> 构造函数参数有三种方式注入Bean  
+> 方式1:定义参数类型为Bean类  
+> 方式2:定义参数默认值为\<ref:xxxx>,xxx 为指定的bean标识  
+> 方式3:定义参数默认值为\<lazy:xxxx>,xxx 为指定的bean标识
 
-- 示例代码
+- 定义参数类型方式注入
 ```php
-
-/**
- * 角色类
- */
-class RoleBean
-{
-    
-}
-
-/**
- * 用户类
- */
 class UserBean
 {
-    /**
-     * 地址名称
-     * @var string
-     */
-    public $name;
-
-    /**
-     * 角色对象
-     * @var RoleBean
-     */
-    public $argRole;
+    public $role;
     
-     /**
-     * 角色对象
-     * @var RoleBean
-     */
-    public $argRefRole;
-    
-    /**
-     * 角色对象
-     * @var RoleBean
-     */
-    public $argLazyRole;
-    
-    // 如RoleBean 配置过bean,则系统会自动从容器中获取RoleBean对象传入
-    public function __construct($name,RoleBean $argRole,$argRefRole = '<ref:role>',$argLazyRole = '<lazy:role>')
+    public function __construct(RoleBean $role)
     {
-        $this->name = $name;
-        $this->argRole = $argRole;
-        $this->argRefRole = $argRefRole;
-        $this->argLazyRole = $argLazyRole;
+        $this->role = $role;
     }
 }
-
-// bean 定义
-$beans = [
-    'user'=>[
-       'class'=>'\user\UserBean',
-       '_args'=>['公司地址']
-    ],
-    'role'=>['class'=>'\user\RoleBean']
-];
-
 ```
-### 属性赋值注入
-```php
-/**
- * 角色类
- */
-class RoleBean
-{
-    
-}
 
-/**
- * 用户类
- */
+- 定义参数默认值方式注入
+```php
 class UserBean
 {
-    /**
-     * 地址名称
-     * @var string
-     */
-    public $name;
+    public $role;
+    
+    public function __construct($role = '<ref:role>')
+    {
+        $this->role = $role;
+    }
+}
+```
 
-    /**
-     * 详细地址
-     * @var string
-     */
-    public $address;
+- 定义参数默认值方式延迟注入
+```php
+class UserBean
+{
+    public $role;
+    
+    public function __construct($role = '<lazy:role>')
+    {
+        $this->role = $role;
+    }
+}
+```
+
+### 属性赋值注入
+> 属性注入对应的属性必须是public属性  
+
+```php
+class UserBean
+{
+    public $name;
 }
 // 对应的bean 定义
 $beans = [
     'user'=>[
        'class'=>'\user\UserBean',
-       'name'=>'公司地址',
+       'name'=>'hehe',
      ],
 ];
 
@@ -292,7 +285,7 @@ $beans = [
     'user'=>[
        'class'=>'\user\UserBean',
        '_attrs'=>[
-          'name'=>'公司地址',
+          'name'=>'hehe',
        ]
      ],
 ];
@@ -301,15 +294,24 @@ $beans = [
 
 ### 属性注入Bean
 - 说明
-```
-以<ref::bean别名> 的方式注入Bean 对象
-以Ref注解的方式注入Bean 对象
-```
+> 以\<ref::bean别名>默认值的方式注入Bean对象  
+> 以Ref注解的方式注入Bean对象  
 
 - 示例代码
 ```php
 namespace user\service;
 use hehe\core\hcontainer\annotation\Ref;
+
+/**
+ * 角色类
+ */
+class Role
+{
+    public function ok()
+    {
+        return 'ok';
+    }
+}
 
 /**
  * 用户类
@@ -336,22 +338,11 @@ class User
     public $role2;
 }
 
-/**
- * 角色类
- */
-class Role
-{
-    public function ok()
-    {
-        return 'ok';
-    }
-}
-
-// bean 定义
+// 对应的bean定义
 $beans = [
     'user'=>[
        'class'=>'user\service\user',
-       'name'=>'公司地址',
+       'name'=>'hehe',
        'role1'=>'<ref::role>'
      ],
      
@@ -362,23 +353,19 @@ $beans = [
 
 ```
 
-
-
 ### Bean代理
 - 说明
-```
-代理概念:在用户端与目标类之间插入一个中间类,用户端通过中间类操作目标类(中间类继承目标类,中间类删除所有属性,重写目标类所有方法)
-代理流程:
-    开启代理后,先创建代理类对象存储在容器中,当在调用代理方法或使用属性时都触发目标类对象的创建，目标对象存储在“代理事件”对象中,
-    基本流程:客户端->代理类->代理事件->创建目标对象->目标方法
-    AOP基本流程:客户端->代理类->代理事件->创建目标对象->AOP切面->目标方法
-开启代理:Bean定义配置_onProxy=true,AOP相关注解(After,Before等等),延迟注入(lazy),即会自动进入代理模式
-解决问题:代理模式实现AOP切面功能,间接实现了"延迟注入",解决了相互依赖导致的死循环问题
-```
+> 代理概念:在用户端与目标类之间插入一个中间类,用户端通过中间类操作目标类(中间类继承目标类,中间类删除所有属性,重写目标类所有方法)  
+> 代理流程:  
+>  开启代理后,先创建代理类对象存储在容器中,当在调用代理方法或使用属性时都触发目标类对象的创建，目标对象存储在“代理事件”对象中,  
+>  基本流程:客户端->代理类->代理事件->创建目标对象->目标方法  
+>  AOP基本流程:客户端->代理类->代理事件->创建目标对象->AOP切面->目标方法  
+> 开启代理:Bean定义配置_onProxy=true,AOP相关注解(After,Before等等),延迟注入(lazy),即会自动进入代理模式 
+> 解决问题:代理模式实现AOP切面功能,间接实现了"延迟注入",解决了相互依赖导致的死循环问题   
 
 - Bean定义代理示例代码
 ```php
-// Bean 定义
+// Bean定义
 $benans =  [
     ['user'=>['class'=>'user\service\user','_onProxy'=>true]]
 ];
@@ -398,7 +385,7 @@ class UserBean
 
 ```
 
-- AOP注解代理示例代码
+- AOP注解示例代码
 ```php
 use hehe\core\hcontainer\annotation\Bean;
 use hehe\core\hcontainer\aop\annotation\After;
@@ -417,7 +404,7 @@ class UserBean
 }
 ```
 
-- 延迟注入代理示例代码
+- 延迟注入示例代码
 ```php
 use hehe\core\hcontainer\annotation\Bean;
 use hehe\core\hcontainer\annotation\Ref;
@@ -430,7 +417,7 @@ class UserBean
     
     /**
      * $annRole 为代理对象
-     * @Ref("role","lazy"=>true)
+     * @Ref("role","_lazy"=>true)
      * @var RoleBean
      */
     public $annRole;
@@ -439,15 +426,11 @@ class UserBean
 
 ### 延迟注入
 - 说明
-```
-由于在注入的过程中,容易出现相互依赖而导致的死循环问题,延迟注入的方式有效的解决此问题,
-延迟注入会自动开启代理模式,如果Bean已经开启过代理模式，注入的是Bean单例代理对象,如Bean 未开启代理模式,则创建新的代理对象
-```
+> 由于在注入的过程中,容易出现相互依赖而导致的死循环问题,延迟注入的方式有效的解决此问题,  
+> 延迟注入会自动开启代理模式,如果Bean已经开启过代理模式，注入的是Bean单例代理对象,如Bean 未开启代理模式,则创建新的代理对象  
 
-- 示例代码
+- Bean定义方式
 ```php
-
-// Bean 定义
 $beans = [
     'user'=>[
        'class'=>'user\service\user',
@@ -461,12 +444,16 @@ $beans = [
     ]
 ];
 
+```
+
+- 注解方式
+```php
 use hehe\core\hcontainer\annotation\Ref;
 // 注解方式
 class RoleBean
 {
     /**
-     * @Ref("user",lazy=true)
+     * @Ref("user",_lazy=true)
      * @var UserBean
      */
     public $user;
@@ -475,17 +462,19 @@ class RoleBean
 
 ```
 
-## 扫描,注解处理器
+
+## 扫描文件
 - 说明
-```
-开启扫描后,程序会自动查找指定命名空间下的所有类文件,并收集注解信息,同时将收集到的注解信息交给对应的注解处理器来处理业务，
-比如与Bean相关的注解器Bean,Ref都被指定由"hehe\core\hcontainer\annotation\BeanProcessor"来处理
-```
+> 开启扫描后,程序会自动查找指定命名空间下的所有类文件,并收集注解信息,同时将收集到的注解信息交给对应的注解处理器来处理业务，  
+> 比如与Bean相关的注解器Bean,Ref都被指定由"hehe\core\hcontainer\annotation\BeanProcessor"来处理  
 
 ### 扫描规则
 ```php
 use hehe\core\hcontainer\ContainerManager;
 $hcontainer = new ContainerManager();
+
+// 开启扫描开关
+$hcontainer->asScan();
 
 // 扫描指定类命名空间下所有类
 $hcontainer->addScanRule(ContainerManager::class,App::class);
@@ -503,33 +492,42 @@ $hcontainer->startScan();
 
 ### 注解处理器
 - 说明
-```
-注解处理器作用:专门用于处理收集到的注解信息
-注解处理器基类:都必须继承"hehe\core\hcontainer\ann\base\AnnotationProcessor"类
-优先处理器:如果想优先执行某个处理器,则可以将此处理器添加到"优先处理器"集合中
-重置处理器:如想重写某个处理器的规则,则可以将此处理器添加到"重置处理器"集合中
-```
+> 注解处理器作用:专门用于处理收集到的注解信息  
+> 注解处理器基类:都必须继承"hehe\core\hcontainer\ann\base\AnnotationProcessor"类  
+> 优先处理器:如果想优先执行某个处理器,则可以将此处理器添加到"优先处理器"集合中  
+> 重置处理器:如想重写某个处理器的规则,则可以将此处理器添加到"重置处理器"集合中  
 
 - 定义注解处理器
 ```php
 use hehe\core\hcontainer\ann\base\AnnotationProcessor;
 class BeanProcessor extends AnnotationProcessor
 {
+    // 自定义注解处理方法
+    protected $annotationHandlers = [
+        'Ref'=>'handleRefAnnotation'
+    ];
+    
     // 实现以下方法即可
     
     // 统一处理类,方法，类类型注解 $target_type = class,method,property
     public function handleAnnotation($annotation,string $class,string $target,string $target_type):void{}
     
-    // 注解类方式
+    // 处理注解类
     public function handleAnnotationClass($annotation,string $class):void{}
     
-    // 注解类方法方式
+    // 处理注解类方法
     public function handleAnnotationMethod($annotation,string $class,string $method):void{}
     
-    // 注解类属性方式
+    // 处理注解类属性
     public function handleAnnotationProperty($annotation,string $class,string $property):void{}
     
-    // 处理器结束事件处理方法
+    // 独立处理注解@Ref
+    public function handleRefAnnotation($annotation,string $class,string $target,string $target_type)
+    {
+        
+    }
+    
+    // 扫码结束后调用此方法
     public function handleProcessorFinish()
     {
         // 注册bean信息到容器
@@ -552,40 +550,35 @@ $hcontainer->addCustomProcessors(["hehe\core\hcontainer\annotation\BeanProcessor
 ```
 
 - 注解与处理器绑定
+> 可通过"hehe\core\hcontainer\ann\base\Annotation"注解器将"注解器"与"注解处理器"绑定  
+> Annotation格式:@Annotation("注解处理器类路径")
+
 ```php
-//可通过"hehe\core\hcontainer\annotation\Annotation"注解器将"注解器"与"注解处理器"绑定
-//Annotation格式:@Annotation("注解处理器类路径")
-use  hehe\core\hcontainer\ann\base\Annotation;
+use hehe\core\hcontainer\ann\base\Annotation;
+use hehe\core\hcontainer\ann\base\BaseAnnotation;
+
 /**
  * @Annotation("hehe\core\hcontainer\annotation\BeanProcessor")
  */
-class Bean
+class Bean extends BaseAnnotation
 {
-    public $id;
+    public $_id;
     public $_scope;
     public $_single;
 
-    public function __construct($value,$_scope = null,$_single = null)
+    public function __construct($value = null,bool $_scope = null,bool $_single = null,string $_id = null)
     {
-        foreach ($attrs as $attr=>$value) {
-            if ($attr == "value") {
-                $this->id = $value;
-            } else {
-                $this->$attr = $value;
-            }
-        }
+        $this->injectArgParams(func_get_args(),'_id');
     }
 }
 ```
 
 ## AOP方法拦截
 - 说明
-```
-切面(aspect):AOP切面通俗点讲就是拦截类方法调用,在调用目标方法之前,之后设置拦截点，并在拦截点插入行为业务,比如日志,获取缓存数据等
-实现原理:在执行创建目标对象时动态的生成代理类，通过代理类操作目标类
-通知点(advice):目标方法之前,之后,异常时切入业务行为的位置点
-拦截点表达式(pointcut):目标方法或匹配方法名的正则表达
-```
+> 切面(aspect):AOP切面通俗点讲就是拦截类方法调用,在调用目标方法之前或之后设置拦截点，并在拦截点插入行为业务,比如日志,获取缓存数据等  
+> 实现原理:在执行创建目标对象时动态的生成代理类，通过代理类操作目标类  
+> 通知点(advice):目标方法之前,之后,异常时切入业务行为的位置点  
+> 拦截点表达式(pointcut):目标方法或匹配方法名的正则表达  
 
 ### 默认通知点位置
 
@@ -599,27 +592,23 @@ class Bean
 
 ### 定义"业务行为"
 - 说明
-```
-每个"业务行为"方法都会传入"拦截点上下文"（PointcutContext）对象,其属性如下
-advice:拦截点位置,如after,before
-target:目标对象
-method:目标方法
-parameters:目标方法传入的参数
-methodResult:执行目标方法后返回的结果
-exception:执行目标方法时抛出的异常对象
+> 每个"业务行为"方法都会传入"拦截点上下文"（PointcutContext）对象,其属性如下  
+> advice:拦截点位置,如after,before  
+> target:目标对象  
+> method:目标方法  
+> parameters:目标方法传入的参数  
+> methodResult:执行目标方法后返回的结果  
+> exception:执行目标方法时抛出的异常对象  
 
-```
 - 示例代码
 ```php
 namespace app\behaviors;
-use hehe\core\hcontainer\aop\base\AopBehavior;
 use hehe\core\hcontainer\aop\base\PointcutContext;
-class LogBehavior extends AopBehavior
+class LogBehavior
 {
     // 默认调用方法
     public function handle(PointcutContext $pointcutCtx)
     {
-        
         $pointcutCtx->advice;// 通知点位置
         $pointcutCtx->target;// 调用的对象
         $pointcutCtx->method;// 被调用的方法
@@ -655,7 +644,6 @@ use hehe\core\hcontainer\aop\annotation\AfterThrowing;
 
 /**
  * @bean("user")
- * 
  * 匹配以"Action"结尾的方法名,并在调用目标方法之后切入"hcontainer\tests\common\LogBehavior@log"业务行为
  * @After("hcontainer\tests\common\LogBehavior@log",pointcut=".+Action")
  */
@@ -715,7 +703,6 @@ class UserBean
         return $msg;
     }
 
-
     // 以下两方法被类切面拦截
     public function do1Action($user,$msg = '')
     {
@@ -731,52 +718,21 @@ class UserBean
 ```
 
 ## 注解
-```
-注解主要用于收集用户在代码中自定义的数据,并交由注解处理器处理业务
-```
+> 注解主要用于收集用户在代码中自定义的数据,并交由注解处理器处理业务  
 
 ### 定义注解处理器
+> 定义注解处理器请参考[扫描-注解处理器](#注解处理器)
 ```php
 class BeanProcessor extends AnnotationProcessor
 {
-    // 自定义注解处理方法
-    protected $annotationHandlers = [
-        'Ref'=>'handleRefAnnotation'
-    ];
-    
-    // 实现以下方法即可
-    
-    // 统一处理类,方法，类类型注解 $target_type = class,method,property
-    public function handleAnnotation($annotation,string $class,string $target,string $target_type):void{}
-    
-    // 注解类方式
-    public function handleAnnotationClass($annotation,string $class):void{}
-    
-    // 注解类方法方式
-    public function handleAnnotationMethod($annotation,string $class,string $method):void{}
-    
-    // 注解类属性方式
-    public function handleAnnotationProperty($annotation,string $class,string $property):void{}
-    
-    public function handleRefAnnotation($annotation,string $class,string $target,string $target_type)
-    {
-        
-    }
-    
-    // 处理器结束事件处理方法
-    public function handleProcessorFinish()
-    {
-        // 注册bean信息到容器
-    }
+   // 
 }
 ```
 ### 定义注解器
 - 说明
-```
-定义注解器时，必须为其指定注解处理器
-可通过"hehe\core\hcontainer\annotation\Annotation"注解器将"注解器"与"注解处理器"绑定
-Annotation格式:@Annotation("注解处理器类路径")
-```
+> 定义注解器时，必须为其绑定注解处理器  
+> 可通过"hehe\core\hcontainer\annotation\Annotation"注解器将"注解器"与"注解处理器"绑定  
+> Annotation格式:@Annotation("注解处理器类路径")  
 
 - 代码示例
 ```php
@@ -823,47 +779,24 @@ class User
 
 ### PHP原生注解
 - 说明
-```
-原生注解与注释注解的用户基本一致,格式如下
-#[注解器("第一个构造参数值")]
-#[注解器("第一个构造参数值",属性名称1:属性值1,属性名称2:属性值2)]
-#[注解器(属性名称1:属性值1,属性名称2:属性值2)]
-#[注解器(array(属性名称1=>属性值1,属性名称2=>属性值2))]
-```
+> 原生注解与注释注解的用户基本一致,格式如下  
+> #[注解器("第一个构造参数值")]  
+> #[注解器("第一个构造参数值",属性名称1:属性值1,属性名称2:属性值2)]  
+> #[注解器(属性名称1:属性值1,属性名称2:属性值2)]  
+> #[注解器(array(属性名称1=>属性值1,属性名称2=>属性值2))]
 
-- 定义注解器1
-```php
-namespace hehe\core\hcontainer\annotation;
-
-use  hehe\core\hcontainer\annotation\Annotation;
-use Attribute;
-
-#[Annotation("hehe\core\hcontainer\annotation\BeanProcessor")]
-#[Attribute]
-class Ref
-{
-    public $ref;
-
-    public function __construct($value = null,bool $lazy = null,string $ref = null)
-    {
-        // 自己处理构造参数
-    }
-}
-
-```
-
-- 定义注解器2
+- 定义原生注解器
 
 ```php
 namespace hehe\core\hcontainer\annotation;
 
-use hehe\core\hcontainer\ann\base\Ann;
+use hehe\core\hcontainer\ann\base\BaseAnnotation;
 use hehe\core\hcontainer\annotation\Annotation;
 use Attribute;
 
 #[Annotation("hehe\core\hcontainer\annotation\BeanProcessor")]
 #[Attribute]
-class Ref extends Ann
+class Ref extends BaseAnnotation
 {
     public $ref;
 
@@ -876,112 +809,142 @@ class Ref extends Ann
 
 ```
 
-- 定义注解器3
-
-```php
-namespace hehe\core\hcontainer\annotation;
-
-use hehe\core\hcontainer\ann\base\Ann;
-use hehe\core\hcontainer\annotation\Annotation;
-use Attribute;
-
-#[Annotation("hehe\core\hcontainer\annotation\BeanProcessor")]
-#[Attribute]
-class Advice extends Ann
-{
-    // 通知点位置
-    public $advice;
-
-    // 业务行为集合
-    public $behaviors = [];
-
-    // 拦截点表达式
-    public $pointcut = '';
-
-    public function __construct($value = null,string $pointcut = null,string $advice = null,string $behaviors = null)
-    {
-        // 需处理构造参数,获取格式化的构造参数
-        $values = $this->getArgParams(func_get_args(),'behaviors');
-        foreach ($values as $name=>$val) {
-            if ($name == 'behaviors') {
-                if (is_string($val)) {
-                    $this->behaviors = explode(',',$val);
-                } else {
-                    $this->behaviors = $val;
-                }
-            } else {
-                $this->$name = $val;
-            }
-        }
-    }
-}
-
-```
-
-- 注解器示例
+- 原生注解器使用示例
 ```php
 namespace admin\service;
 use hehe\core\hcontainer\annotation\Bean;
 use hehe\core\hcontainer\annotation\Ref;
 
-
 #[Bean("user")]
 class User
 {
-    public $name;
-
     /**
-     * role 值为Role bean对象
-     * 
+     * role值为Role bean对象
      */
-     #[Ref("role",lazy:true)]
+     #[Ref("role",_lazy:true)]
     public $role;
     
     #[After("hcontainer\\tests\common\LogBehavior@@log2")]
-    public function okaop1($log,$msg)
+    public function ok()
     {
-
-        return $msg;
-    }
-    
-    #[After(behaviors:"hcontainer\\tests\common\LogBehavior@@log2")]
-    public function okaop2($log,$msg)
-    {
-
-        return $msg;
+        return 'ok';
     }
 }
 
 ```
 
-### 未定义注解处理器
-- 说明
-```
-
-```
-
-- 示例代码
+### 获取注解对象
 ```php
+use hehe\core\hcontainer\ContainerManager;
+$hcontainer = new ContainerManager();
+
+// 查找UserLog类的Bean注解
+$annBeans = $hcontainer->getAnnManager()->findClassAnnotations(UserLog::class,Bean::class);
+// 判断UserLog类是否存在Bean注解
+$hasStatus = $hcontainer->getAnnManager()->hasClassAnnotations(UserLog::class,Bean::class);
+
+// 查找UserBean类方法(doAfter)的After注解
+$annBean = $hcontainer->getAnnManager()->findMethodAnnotations(UserBean::class,'doAfter',After::class);
+// 判断UserBean类方法(doAfter)是否存在After注解
+$hcontainer->getAnnManager()->hasMethodAnnotations(UserBean::class,'doAfter',After::class);
+
+// 查找UserBean类属性(annRole)的Ref注解
+$annBean = $hcontainer->getAnnManager()->findPropertyAnnotations(UserBean::class,'annRole',Ref::class);
+// 判断UserBean类属性(annRole)是否存在Ref注解
+$hcontainer->getAnnManager()->hasPropertyAnnotations(UserBean::class,'annRole',Ref::class);
+
 
 ```
-
-
-
-
 
 ### 默认注解器列表
 
-注解器 |说明|格式
----------|----------|------
-hehe\core\hcontainer\annotation\Bean|标识此类为bean对象|@Bean("user"),@Bean(id="user"),@Bean("user",_onProxy=>true)
-hehe\core\hcontainer\annotation\Proxy|标识此类启用了代理,同时会生成代理对象,一般用于切面|@Proxy()
-hehe\core\hcontainer\annotation\Ref|标识类属性为bean对象|@Ref("user"),@Ref("user",lazy=true)
-hehe\core\hcontainer\aop\annotation\After|aop切面注解器,用于在执行目标方法之后切入“业务行为”|@After("业务行为类路径"),@After("业务行为类路径@方法"),@After("业务行为类路径@@静态方法")
-hehe\core\hcontainer\aop\annotation\Before|aop切面注解器,用于在执行目标方法之前切入“业务行为”|与@After格式一致
-hehe\core\hcontainer\aop\annotation\Around|aop切面注解器,用于在执行目标方法之前与之后切入“业务行为”|与@After格式一致
-hehe\core\hcontainer\aop\annotation\AfterThrowing|aop切面注解器,用于在执行目标方法时发生异常时切入“业务行为”|与@After格式一致
-hehe\core\hcontainer\aop\annotation\AfterReturning|aop切面注解器,用于在执行目标方法之后,无论是否发生异常,都会切入“业务行为”,类似异常的finally|与@After格式一致
+- Bean注解
+> 标识此类为bean对象  
+> 类路径:hehe\core\hcontainer\annotation\Bean  
 
+```php
+use hehe\core\hcontainer\annotation\Bean;
+/**
+ * @Bean("user")
+ * @Bean("user",_onProxy=>true)
+ * @Bean(_id="user")
+ */
+class User
+{
+
+}
+```
+
+- Proxy注解
+> 标识此类启用了代理,同时会生成代理对象,一般用于切面  
+> 类路径:hehe\core\hcontainer\annotation\Proxy  
+```php
+use hehe\core\hcontainer\annotation\Proxy;
+/**
+ * @Proxy()
+ */
+class User
+{
+
+}
+```
+
+- Ref注解
+> 标识类属性为bean对象  
+> 类路径:hehe\core\hcontainer\annotation\Ref  
+```php
+use hehe\core\hcontainer\annotation\Ref;
+
+class User
+{   
+    /**
+    * @Ref('role'),
+    * @Ref('role',_lazy=true)
+    */
+    protected $role;
+}
+```
+
+- After注解
+> 标识aop切面,在目标方法执行之后切入“业务行为”  
+> 类路径:hehe\core\hcontainer\aop\annotation\After  
+> 示例:@After("业务行为类路径"),@After("业务行为类路径@方法"),@After("业务行为类路径@@静态方法")
+
+```php
+use hehe\core\hcontainer\aop\annotation\After;
+
+class User
+{   
+    /**
+     * 注册用户
+     * @After("hcontainer\tests\common\LogBehavior")
+     */
+    public function add(array $user)
+    {
+        return 'ok';
+    }
+}
+```
+
+- Before注解
+> 标识aop切面,在目标方法执行之前切入“业务行为”  
+> 类路径:hehe\core\hcontainer\aop\annotation\Before
+> 示例:与@After格式一致
+
+- Around注解
+> 标识aop切面,在目标方法执行之前与之后切入“业务行为”  
+> 类路径:hehe\core\hcontainer\aop\annotation\Around  
+> 示例:与@After格式一致  
+
+- AfterThrowing注解
+> 标识aop切面,在目标方法执行抛出异常时切入“业务行为”  
+> 类路径:hehe\core\hcontainer\aop\annotation\AfterThrowing  
+> 示例:与@After格式一致
+
+- AfterReturning注解
+> aop切面注解器,用于在执行目标方法之后,无论是否发生异常,都会切入“业务行为”,类似异常的finally  
+> 类路径:hehe\core\hcontainer\aop\annotation\AfterReturning  
+> 示例:与@After格式一致
 
 
 

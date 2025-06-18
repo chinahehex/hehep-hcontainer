@@ -9,7 +9,7 @@ use hehe\core\hcontainer\ContainerManager;
 
 class AttributeTest extends TestCase
 {
-    protected function setUp()
+    protected function setUp():void
     {
         parent::setUp();
         $this->register('bean.php');

@@ -1,7 +1,7 @@
 <?php
 namespace hehe\core\hcontainer\aop\annotation;
 
-use hehe\core\hcontainer\ann\base\Ann;
+use hehe\core\hcontainer\ann\base\BaseAnnotation;
 use hehe\core\hcontainer\ann\base\Annotation;
 use Attribute;
 
@@ -10,7 +10,7 @@ use Attribute;
  */
 #[Annotation("hehe\core\hcontainer\aop\annotation\AdviceProcessor")]
 #[Attribute]
-class Advice extends Ann
+class Advice extends BaseAnnotation
 {
     // 通知点位置
     public $advice;
@@ -40,7 +40,7 @@ class Advice extends Ann
                     $this->behaviors = $val;
                 }
             } else {
-                $this->$name = $val;
+                $this->{$name} = $val;
             }
         }
     }

@@ -11,7 +11,7 @@ use Attribute;
  *</pre>
  */
 #[Attribute]
-class Annotation extends Ann
+class Annotation extends BaseAnnotation
 {
     const TARGET_CLASS = 'CLASS';
 
@@ -47,7 +47,7 @@ class Annotation extends Ann
      *</pre>
      * @param  array $value
      */
-    public function __construct($value,string $target = null,string $processor = null)
+    public function __construct($value,?string $target = null,string $processor = null)
     {
         $this->injectArgParams(func_get_args(),'processor');
     }
@@ -60,7 +60,7 @@ class Annotation extends Ann
      *</pre>
      * @return string
      */
-    public function getProcessor()
+    public function getProcessor():string
     {
         return $this->processor;
     }
@@ -74,7 +74,7 @@ class Annotation extends Ann
      * @param string $target
      * @return boolean
      */
-    public function effectiveTarget($target)
+    public function effectiveTarget($target):bool
     {
         $target = strtoupper($target);
 

@@ -1,7 +1,7 @@
 <?php
 namespace hehe\core\hcontainer\annotation;
 
-use hehe\core\hcontainer\ann\base\Ann;
+use hehe\core\hcontainer\ann\base\BaseAnnotation;
 use hehe\core\hcontainer\ann\base\Annotation;
 use Attribute;
 /**
@@ -9,7 +9,7 @@ use Attribute;
  */
 #[Annotation("hehe\core\hcontainer\annotation\BeanProcessor")]
 #[Attribute]
-class Ref extends Ann
+class Ref extends BaseAnnotation
 {
     public $ref;
 

@@ -1,5 +1,6 @@
 <?php
 namespace hehe\core\hcontainer\aop\base;
+
 use hehe\core\hcontainer\aop\AopManager;
 use hehe\core\hcontainer\proxy\ProxyHandler;
 

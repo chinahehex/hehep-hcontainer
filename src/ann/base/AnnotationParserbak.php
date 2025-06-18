@@ -2,7 +2,7 @@
 namespace hehe\core\hcontainer\ann\base;
 
 use Doctrine\Common\Annotations\AnnotationReader;
-use hehe\core\hcontainer\ann\AnnotationManager;
+use hehe\core\hcontainer\ann\ScanManager;
 use ReflectionClass;
 use ReflectionMethod;
 use ReflectionProperty;
@@ -15,7 +15,7 @@ use ReflectionProperty;
  * 略
  *</pre>
  */
-class annotationParser
+class AnnotationParserbak
 {
 
     /**
@@ -30,17 +30,17 @@ class annotationParser
      *<pre>
      *  略
      *</pre>
-     * @var AnnotationManager
+     * @var ScanManager
      */
-    protected $annotationManager;
+    protected $scanManager;
 
-    public function __construct(AnnotationManager $annotationManager)
+    public function __construct(ScanManager $scanManager)
     {
         if (class_exists(AnnotationReader::class)) {
             $this->annotationReader = new AnnotationReader();
         }
 
-        $this->annotationManager = $annotationManager;
+        $this->scanManager = $scanManager;
     }
 
     /**
@@ -56,9 +56,42 @@ class annotationParser
     {
         $processorClass = $annotationMeta->getProcessor();
 
-        return $this->annotationManager->getProcessor($processorClass);
+        return $this->scanManager->getProcessor($processorClass);
     }
 
+    /**
+     * 查找指定某注解
+     * @param string $reflectionClass
+     * @param string $annotation
+     */
+    public function findClassAnnotation(ReflectionClass $reflectionClass, string $annotation)
+    {
+        $classAnnotations  = $this->annotationReader->getClassAnnotations($reflectionClass);
+        $targetAnnotation = null;
+        foreach ($classAnnotations as $myAnnotation) {
+            if ($myAnnotation instanceof $annotation) {
+                $targetAnnotation = $myAnnotation;
+            }
+        }
+
+        if (method_exists($reflectionClass,'getAttributes')) {
+            $attributes = $reflectionClass->getAttributes();
+            if ($reflectionClass->getName() === Annotation::class || empty($attributes)) {
+                return $annotations;
+            }
+
+            foreach ($attributes as $attribute) {
+                $myAnnotation = $attribute->newInstance();
+                if ($myAnnotation instanceof \Attribute || $myAnnotation instanceof Annotation) {
+                    continue;
+                }
+            }
+        }
+
+
+
+        return $targetAnnotation;
+    }
 
     public function getClassAnnotations(ReflectionClass $reflectionClass):array
     {
@@ -70,7 +103,7 @@ class annotationParser
         return $annotations;
     }
 
-    public function getMethodAnnotations(ReflectionMethod $reflectionMethod)
+    public function getMethodAnnotations(ReflectionMethod $reflectionMethod):array
     {
         $annotations = [];
 
@@ -80,7 +113,7 @@ class annotationParser
         return $annotations;
     }
 
-    public function getPropertyAnnotations(ReflectionProperty $propertie)
+    public function getPropertyAnnotations(ReflectionProperty $propertie):array
     {
         $annotations = [];
 
@@ -140,7 +173,7 @@ class annotationParser
         return $annotations;
     }
 
-    public function getDoctrinePropertyAnnotations(ReflectionProperty $propertie)
+    public function getDoctrinePropertyAnnotations(ReflectionProperty $propertie):array
     {
         $annotations = [];
 

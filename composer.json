@@ -8,7 +8,10 @@
 		}
 	],
 	"require": {
-		"php": ">=7.1"
+		"php": ">=7.4"
+	},
+	"require-dev": {
+		"phpunit/phpunit": "^8.5"
 	},
 	"autoload": {
 		"psr-4": {
@@ -19,5 +22,10 @@
 		"psr-4": {
 			"hcontainer\\test\\": "tests/"
 		}
+	},
+	"scripts": {
+		"test:win": ["@test:php7","@test:php8"],
+		"test:php7": "D:/bin/phpstudy_pro/Extensions/php/php7.4.3nts/php.exe ../vendor/bin/phpunit",
+		"test:php8": "D:/bin/phpstudy_pro/Extensions/php/php8.2.9nts/php.exe ../vendor/bin/phpunit"
 	}
 }

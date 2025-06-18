@@ -1,11 +1,11 @@
 <?php
 namespace hehe\core\hcontainer;
 
-use hehe\core\hcontainer\ann\AnnotationManager;
 use hehe\core\hcontainer\aop\AopManager;
 use hehe\core\hcontainer\base\Container;
 use hehe\core\hcontainer\base\Definition;
-
+use hehe\core\hcontainer\ann\AnnManager;
+use Psr\Container\ContainerInterface;
 
 /**
  * 容器管理器类
@@ -47,7 +47,7 @@ use hehe\core\hcontainer\base\Definition;
  *
  * 定义的属性name55,name56,name57 自动归入_attr 属性(类的属性)
  */
-class ContainerManager
+class ContainerManager implements ContainerInterface
 {
     const CLASS_KEY_NAME = "class";
     const SCOPE_REQUEST = 'request';
@@ -78,7 +78,7 @@ class ContainerManager
      *<pre>
      *  略
      *</pre>
-     * @var \hehe\core\hcontainer\ann\AnnotationManager
+     * @var \hehe\core\hcontainer\ann\AnnManager
      */
     protected $annManager;
 
@@ -105,6 +105,12 @@ class ContainerManager
         'app'=>null,
         'request'=>null
     ];
+
+    /**
+     * 在引导应用时创建对象的bean 集合
+     * @var array
+     */
+    protected $bootBeans = [];
 
     /**
      * bean定义对象列表
@@ -134,17 +140,7 @@ class ContainerManager
      *</pre>
      * @var array
      */
-    protected $clazzBeanIdMap = [];
-
-    /**
-     * bean 对象列表
-     *<B>说明：</B>
-     *<pre>
-     *  存储单例
-     *</pre>
-     * @var array
-     */
-    protected $beans = [];
+    protected $classBeanIdMap = [];
 
     /**
      * 容器作用域处理
@@ -163,16 +159,42 @@ class ContainerManager
      *  略
      *</pre>
      */
-    public function __construct($attrs = [])
+    public function __construct(array $config = [])
     {
-        if (!empty($attrs)) {
-            foreach ($attrs as $attr=>$value) {
-                $this->$attr = $value;
+        if (!empty($config)) {
+            foreach ($config as $name=>$value) {
+                $this->{$name} = $value;
             }
         }
     }
 
-    public function getAopManager()
+    public function asScan():self
+    {
+        $this->scan = true;
+
+        return $this;
+    }
+
+    /**
+     * 容器启动
+     */
+    public function startup():void
+    {
+        if ($this->scan === true) {
+            $this->startScan();
+        }
+
+        $this->doBootBeans();
+    }
+
+    protected function doBootBeans():void
+    {
+        foreach ($this->bootBeans as $beanId=>$status) {
+            $this->get($beanId);
+        }
+    }
+
+    public function getAopManager():AopManager
     {
         if ($this->aopManager == null) {
             $this->aopManager = new AopManager();
@@ -181,10 +203,10 @@ class ContainerManager
         return $this->aopManager;
     }
 
-    public function getAnnManager():AnnotationManager
+    public function getAnnManager():AnnManager
     {
         if ($this->annManager == null) {
-            $this->annManager = new AnnotationManager([
+            $this->annManager = new AnnManager([
                 'scanRules'=>$this->scanRules,
                 'containerManager'=>$this,
             ]);
@@ -337,6 +359,16 @@ class ContainerManager
         return $bean;
     }
 
+    public function get(string $id)
+    {
+        return $this->getBean($id);
+    }
+
+    public function has(string $id): bool
+    {
+        return $this->hasComponent($id);
+    }
+
     /**
      * 根据类路径获取bean对象,
      * @param string $clazz
@@ -414,6 +446,9 @@ class ContainerManager
     public function batchRegister(array $components = []):void
     {
         foreach ($components as $id=>$component) {
+            if (is_string($component)) {
+                $component = ['class'=>$component];
+            }
             $this->appendComponent($id,$component);
         }
     }
@@ -425,19 +460,32 @@ class ContainerManager
      *  略
      *</pre>
      * @param string $id 组件标识
-     * @param string $class 组件类
+     * @param ?string $class 组件类
      * @param array $component 组件配置
      */
-    public function register(string $id,string $class = null,array $component = []):void
+    public function register(string $id,?string $class = null,array $component = []):void
     {
         $component = array_merge($component,[
-            'id'=>$id,
+            Definition::SYS_ATTR_ID=>$id,
             'class'=>$class
         ]);
 
         $this->appendComponent($id,$component);
 
         return ;
+    }
+
+    public function registerObject(string $id,$object,array $options = []):void
+    {
+        $component = array_merge([
+            Definition::SYS_ATTR_ID=>$id,
+            'class'=>get_class($object),
+        ],$options);
+
+        $this->appendComponent($id,$component);
+        $definition = $this->getDefinition($id);
+        $container = $definition->getContainer();
+        $container->setBean($id,$object);
     }
 
     /**
@@ -447,8 +495,8 @@ class ContainerManager
      */
     public function getBeanId(string $clazz):?string
     {
-        if (isset($this->clazzBeanIdMap[$clazz])) {
-            return $this->clazzBeanIdMap[$clazz];
+        if (isset($this->classBeanIdMap[$clazz])) {
+            return $this->classBeanIdMap[$clazz];
         } else {
             return null;
         }
@@ -467,14 +515,26 @@ class ContainerManager
     {
         $component = $this->formatComponent($beanId,$component);
 
-        $bid = $component['id'];
+        $bid = $component[Definition::SYS_ATTR_ID];
         if (isset($this->components[$bid])) {
             $this->components[$bid] = $component + $this->components[$bid];
         } else {
             $this->components[$bid] = $component;
         }
 
-        $this->clazzBeanIdMap[$component['class']] = $bid;
+        $bind = [$component['class']];
+        if (isset($this->components[$bid][Definition::SYS_ATTR_BIND])) {
+            $bind = array_merge($bind,$this->components[$bid][Definition::SYS_ATTR_BIND]);
+        }
+
+        foreach ($bind as $clazz) {
+            $this->classBeanIdMap[$clazz] = $bid;
+        }
+
+        // 判断是否引导启动
+        if (isset($component[Definition::SYS_ATTR_BOOT]) && $component[Definition::SYS_ATTR_BOOT] === true) {
+            $this->bootBeans[$bid] = true;
+        }
     }
 
     public function hasComponent(string $beanId):bool
@@ -508,8 +568,8 @@ class ContainerManager
 
     protected function formatComponent(string $id,array $component):array
     {
-        if (!isset($component['id'])) {
-            $component['id'] = $id;
+        if (!isset($component[Definition::SYS_ATTR_ID])) {
+            $component[Definition::SYS_ATTR_ID] = $id;
         }
 
         if (is_null($component['class'])) {
@@ -525,10 +585,23 @@ class ContainerManager
         }
 
         $bean_class = $component['class'];
-        if (isset($this->clazzBeanIdMap[$bean_class])) {
-            $component['id'] = $this->clazzBeanIdMap[$bean_class];
+        if (isset($this->classBeanIdMap[$bean_class])) {
+            $component[Definition::SYS_ATTR_ID] = $this->classBeanIdMap[$bean_class];
         }
 
         return $component;
     }
+
+    public function bindBeanClass(string $beanId,...$classs):void
+    {
+        foreach ($classs as $class) {
+            $this->classBeanIdMap[$class] = $beanId;
+        }
+    }
+
+    public function getBootBeans():array
+    {
+        return array_keys($this->bootBeans);
+    }
+
 }

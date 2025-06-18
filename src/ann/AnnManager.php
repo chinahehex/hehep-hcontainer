@@ -3,7 +3,7 @@ namespace hehe\core\hcontainer\ann;
 
 use hehe\core\hcontainer\ann\base\AnnotationParser;
 use hehe\core\hcontainer\ann\base\AnnotationProcessor;
-use hehe\core\hcontainer\ann\scan\Scan;
+use hehe\core\hcontainer\ann\rule\Scan;
 use hehe\core\hcontainer\ContainerManager;
 
 /**
@@ -13,7 +13,7 @@ use hehe\core\hcontainer\ContainerManager;
  * 控制扫描的基本流程：指定扫描目录,收集注解信息,注解信息处理
  *</pre>
  */
-class AnnotationManager
+class AnnManager
 {
     /**
      * 扫描器对象
@@ -75,13 +75,20 @@ class AnnotationManager
      */
     protected $containerManager;
 
+    /**
+     * @var AnnotationParser
+     */
+    protected $anotationParser;
+
     public function __construct(array $attrs = [])
     {
         if (!empty($attrs)) {
-            foreach ($attrs as $attr=>$value) {
-                $this->$attr = $value;
+            foreach ($attrs as $name=>$value) {
+                $this->{$name} = $value;
             }
         }
+
+        $this->anotationParser = new AnnotationParser($this);
     }
 
     /**
@@ -115,12 +122,40 @@ class AnnotationManager
     {
         $this->scan = new Scan($this->getFormatScanRules());
         $classList = $this->scan->startScanClass();
-
-        $anotationParser = new annotationParser($this);
-        $anotationParser->parse($classList);
+        $this->anotationParser->parse($classList);
     }
 
-    protected function getFormatScanRules()
+    public function findClassAnnotations(string $class, string $targetAnnotation):array
+    {
+        return $this->anotationParser->findClassAnnotations($class,$targetAnnotation);
+    }
+
+    public function hasClassAnnotations(string $class, string $targetAnnotation):bool
+    {
+        return count($this->anotationParser->findClassAnnotations($class,$targetAnnotation)) > 0;
+    }
+
+    public function findMethodAnnotations(string $class, string $method, string $targetAnnotation):array
+    {
+        return $this->anotationParser->findMethodAnnotations($class,$method,$targetAnnotation);
+    }
+
+    public function hasMethodAnnotations(string $class, string $method, string $targetAnnotation):bool
+    {
+        return count($this->anotationParser->findMethodAnnotations($class,$method,$targetAnnotation)) > 0;
+    }
+
+    public function findPropertyAnnotations(string $class, string $property, string $targetAnnotation):array
+    {
+        return $this->anotationParser->findPropertyAnnotations($class,$property,$targetAnnotation);
+    }
+
+    public function hasPropertyAnnotations(string $class, string $property, string $targetAnnotation):bool
+    {
+        return count($this->anotationParser->findPropertyAnnotations($class,$property,$targetAnnotation)) > 0;
+    }
+
+    protected function getFormatScanRules():array
     {
         $scan_rules =  [];
         foreach ($this->scanRules as $rule) {

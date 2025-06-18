@@ -1,10 +1,10 @@
 <?php
 namespace hcontainer\tests\common;
+
 use hehe\core\hcontainer\annotation\Bean;
 
 /**
- *
- * @bean("userLog")
+ * @Bean("userLog")
  */
 class UserLog extends BaseLog
 {

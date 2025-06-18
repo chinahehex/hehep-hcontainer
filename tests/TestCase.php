@@ -11,25 +11,25 @@ class TestCase extends \PHPUnit\Framework\TestCase
     protected $hcontainer = null;
 
     // 单个测试之前(每个测试方法之前调用)
-    protected function setUp()
+    protected function setUp():void
     {
         $this->hcontainer = new ContainerManager();
     }
 
     // 单个测试之后(每个测试方法之后调用)
-    protected function tearDown()
+    protected function tearDown():void
     {
 
     }
 
     // 整个测试类之前
-    public static function setUpBeforeClass()
+    public static function setUpBeforeClass():void
     {
 
     }
 
     // 整个测试类之前
-    public static function tearDownAfterClass()
+    public static function tearDownAfterClass():void
     {
 
     }

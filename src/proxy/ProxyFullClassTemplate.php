@@ -102,7 +102,12 @@ class ProxyFullClassTemplate
             $return_type_code = '';
             if ($reflectionMethod->hasReturnType()) {
                 $refReturnType = $reflectionMethod->getReturnType();
-                $return_type_php = (string)$refReturnType;
+                if (method_exists($refReturnType,'getName')) {
+                    $return_type_php = $refReturnType->getName();
+                } else {
+                    $return_type_php = (string)$refReturnType;
+                }
+
                 if (strpos($return_type_php,'?') === false) {
                     $return_type_code = $refReturnType->allowsNull() ? ':?' . $return_type_php : ':' . $return_type_php;
                 } else {
@@ -146,7 +151,13 @@ class ProxyFullClassTemplate
             $type_name = "";
             if ($reflectionParameter->hasType()) {
                 $var_type = $reflectionParameter->getType();
-                $var_type_php = (string)$var_type;
+                if (method_exists($var_type,'getName')) {
+                    $var_type_php = $var_type->getName();
+                } else {
+                    $var_type_php = (string)$var_type;
+                }
+
+                //$var_type_php = (string)$var_type;
                 if (strpos($var_type_php,'?') === false) {
                     $type_name = $var_type->allowsNull() ? "?" . $var_type_php : $var_type_php;
                 } else {

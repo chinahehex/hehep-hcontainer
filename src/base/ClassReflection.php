@@ -44,7 +44,7 @@ class ClassReflection
      *</pre>
      * @var array
      */
-    protected $parameters = [];
+    protected $parameters;
 
     /**
      * bean 定义对象
@@ -63,7 +63,7 @@ class ClassReflection
      *  略
      *</pre>
      */
-    public function __construct($clazz,$definition)
+    public function __construct(string $clazz,Definition $definition)
     {
         $this->clazz = $clazz;
         $this->definition = $definition;
@@ -129,7 +129,7 @@ class ClassReflection
      */
     protected function getConstructParams():array
     {
-        if (count($this->parameters) > 0) {
+        if ($this->parameters !== null) {
             return $this->parameters;
         }
 
@@ -139,47 +139,42 @@ class ClassReflection
         if ($constructor !== null) {
             foreach ($constructor->getParameters() as $param) {
                 $name = $param->getName();
-                if ($param->isDefaultValueAvailable()) {// 如果有默认值，就说明不可能是类对象
+                $defaultValue = null;
+                $type = $param->getType();
+                if (!is_null($type) && !$param->getType()->isBuiltin()) {
+                    // 非系统类型
+                    if ($type instanceof \ReflectionNamedType) {
+                        $class = $type->getName(); // 获取类名
+                    } else {
+                        $class = $param->getClass()->getName();
+                    }
+                    // 如果类是bean,则自动从容器读取bean 对象
+                    $hcontainer = $this->definition->getContainerManager();
+                    if ($hcontainer->hasBeanByClass($class)) {
+                        $defaultValue = $this->definition->newDefinition(['_ref'=>$hcontainer->getBeanId($class)]);
+                    } else {
+                        // interface_exists,判断是否接口
+                    }
+                } else {
                     $defaultValue = $param->getDefaultValue();
                     if (is_string($defaultValue)) {
                         if (preg_match(static::BEAN_REF_REGEX, $defaultValue, $match) ) {
                             $ref_type = $match[1];
                             if ($ref_type === 'lazy') {
-                                $definition = $this->definition->newDefinition(['_ref'=>$match[2],'_lazy'=>true]);
+                                $defaultValue = $this->definition->newDefinition(['_ref'=>$match[2],'_lazy'=>true]);
                             } else {
-                                $definition = $this->definition->newDefinition(['_ref'=>$match[2]]);
+                                $defaultValue = $this->definition->newDefinition(['_ref'=>$match[2]]);
                             }
-
-                            $defaultValue = $definition->make();
                         } else if (preg_match(static::PARAMS_REGEX, $defaultValue, $match)) {
                             $func_name = $match[1];
                             $func_params = $match[2];
                             $func_params_arr = explode(static::PARAMS_SPLIT_CHARACTER,$func_params);
-                            $definition = $this->definition->newDefinition(['_func'=>[$func_name,$func_params_arr]]);
-                            $defaultValue = $definition->make();
+                            $defaultValue = $this->definition->newDefinition(['_func'=>[$func_name,$func_params_arr]]);
                         }
                     }
-
-                    $parameters[$name] = $defaultValue;
-                } else {
-                    $defaultValue = null;
-                    if (!$param->getType()->isBuiltin()) {
-                        // 非系统类型
-                        $type = $param->getType();
-                        if ($type instanceof \ReflectionNamedType) {
-                            $class = $type->getName(); // 获取类名
-                        } else {
-                            $class = $param->getClass()->getName();
-                        }
-                        // 如果类是bean,则自动从容器读取bean 对象
-                        $hcontainer = $this->definition->getContainerManager();
-                        if ($hcontainer->hasBeanByClass($class)) {
-                            $defaultValue = $hcontainer->getBeanByClass($class);
-                        }
-                    }
-
-                    $parameters[$name] = $defaultValue;
                 }
+
+                $parameters[$name] = $defaultValue;
             }
         }
 
@@ -195,22 +190,25 @@ class ClassReflection
      *  略
      *</pre>
      */
-    protected function buildConstructParmas(array $args):array
+    protected function buildConstructParmas(array $args = []):array
     {
-        $construct_params = $this->getConstructParams();
-        $bean_args = $this->mergeConstructParams($args,$construct_params);
-
-        if (!empty($bean_args)) {
-            foreach ($bean_args as $index => $value) {
-                if ($value instanceof Definition) {
-                    $bean_args[$index] = $value->make([]);
-                } else {
-                    $bean_args[$index] = $value;
+        $constructParams = $this->getConstructParams();
+        if (!empty($constructParams)) {
+            $beanArgs = $this->mergeConstructParams($args,$constructParams);
+            if (!empty($beanArgs)) {
+                foreach ($beanArgs as $index => $value) {
+                    if ($value instanceof Definition) {
+                        $beanArgs[$index] = $value->make();
+                    } else {
+                        $beanArgs[$index] = $value;
+                    }
                 }
             }
-        }
 
-        return $bean_args;
+            return $beanArgs;
+        } else {
+            return $constructParams;
+        }
     }
 
     /**
@@ -222,7 +220,7 @@ class ClassReflection
      */
     protected function getReflection():ReflectionClass
     {
-        if ($this->reflection ==  null) {
+        if ($this->reflection ===  null) {
             $this->reflection = new ReflectionClass($this->clazz);
         }
 

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/8.5/phpunit.xsd"
+        backupGlobals="false"
+
+        backupStaticAttributes="false"
+        colors="true"
+        convertErrorsToExceptions="true"
+        convertNoticesToExceptions="true"
+        convertWarningsToExceptions="true"
+        processIsolation="false"
+        stopOnFailure="false"
+        bootstrap="../vendor/autoload.php"
+    >
+    <php>
+        <ini name="xxx" value="xxx"/>
+    </php>
+
+    <logging>
+        <!-- 生成HTML覆盖率报告 -->
+        <log type="coverage-html" target="./build/coverage"/>
+    </logging>
+
+    <!-- 测试用例 -->
+    <testsuites>
+        <testsuite name="hcache Test Suite">
+            <directory suffix="Test.php">./tests</directory>
+        </testsuite>
+    </testsuites>
+
+    <!-- 源码目录 -->
+    <filter>
+        <whitelist processUncoveredFilesFromWhitelist="true">
+            <directory suffix=".php">./src</directory>
+        </whitelist>
+    </filter>
+</phpunit>
+

@@ -1,6 +1,7 @@
 <?php
 namespace hehe\core\hcontainer\proxy;
 
+use hehe\core\hcontainer\base\Definition;
 
 /**
  * 代理事件处理类

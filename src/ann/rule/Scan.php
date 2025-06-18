@@ -1,5 +1,5 @@
 <?php
-namespace hehe\core\hcontainer\ann\scan;
+namespace hehe\core\hcontainer\ann\rule;
 
 /**
  * 扫描类
@@ -62,7 +62,7 @@ class Scan
      *  略
      *</pre>
      */
-    protected function _init()
+    protected function _init():void
     {
         foreach ($this->scanRules as $rule) {
             $ruleClazz = ScanRule::class;
@@ -90,7 +90,7 @@ class Scan
      * @param array $attrs
      * @return ScanRule
      */
-    protected function createDefaultScanRule($attrs)
+    protected function createDefaultScanRule($attrs):ScanRule
     {
         if (!isset($attrs['rule'])) {
             $attrs['rule'] = '.php';
@@ -107,7 +107,7 @@ class Scan
      *</pre>
      * @return array 类文件路径列表
      */
-    public function startScanClass()
+    public function startScanClass():array
     {
         $fileClazzList = [];
         foreach ($this->scanRuleList as $scanRule) {
@@ -127,7 +127,7 @@ class Scan
      * @param ScanRule $scanRule
      * @return array 类文件路径列表
      */
-    public function scanClassByRule($scanRule)
+    public function scanClassByRule($scanRule):array
     {
         $fileClazzList = [];
         $this->doScanResource($scanRule,$fileClazzList);
@@ -145,7 +145,7 @@ class Scan
      * @param string $baseNamespace
      * @return array 类文件路径列表
      */
-    public function scanClassByPath($basePath,$baseNamespace)
+    public function scanClassByPath($basePath,$baseNamespace):array
     {
         $scanRule = $this->createDefaultScanRule([
             'path'=>$basePath,
@@ -192,7 +192,6 @@ class Scan
                 $this->doScanResource($scanRule,$fileClazzList,!empty($dirName) ? $dirName . DIRECTORY_SEPARATOR . $filename : $filename);
             } else {
                 if ($scanRule->check($filePath)) {
-                    $classNamespace = $scanRule->getBaseNamespace() . '\\' . str_replace(DIRECTORY_SEPARATOR,'\\',$dirName) . '\\' . basename($filename,".php");;
                     if (!empty($dirName)) {
                         $classNamespace = $scanRule->getBaseNamespace() . '\\' . str_replace(DIRECTORY_SEPARATOR,'\\',$dirName) . '\\' . basename($filename,".php");;
                     } else {

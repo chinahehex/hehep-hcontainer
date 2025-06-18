@@ -9,3 +9,5 @@ logs
 /vendor
 /*.lock
 /*.txt
+/build
+.phpunit.result.cache

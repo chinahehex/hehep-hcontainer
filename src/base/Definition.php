@@ -26,8 +26,10 @@ class Definition
     const SYS_ATTR_SINGLE = '_single';
     const SYS_ATTR_CLASS = 'class';
     const SYS_ATTR_ID = '_id';
-
+    const SYS_ATTR_BIND = '_bind';
+    const SYS_ATTR_BOOT = '_boot';
     const DEFAULT_SCOPE = 'forever';
+
 
     /**
      * bean全局唯一id
@@ -39,13 +41,40 @@ class Definition
     protected $_id = "";
 
     /**
+     * 绑定其他bean或接口
+     * @var array
+     */
+    protected $_bind = [];
+
+    /**
+     * 实在在引导应用时创建对象
+     * @var bool
+     */
+    protected $_boot = false;
+
+    /**
      * 系统默认属性
      *<B>说明：</B>
      *<pre>
      *  略
      *</pre>
      */
-    protected static $sysAttr = ['_attrs','_scope','_ref','_lazy','_func','class','_single','_init','_args','_onProxy','_proxyHandler'];
+    protected static $sysAttr = [
+        '_id',
+        '_boot',
+        '_attrs',
+        '_scope',
+        '_ref',
+        '_lazy',
+        '_func',
+        'class',
+        '_single',
+        '_bind',
+        '_init',
+        '_args',
+        '_onProxy',
+        '_proxyHandler'
+    ];
 
     /**
      * 调用其他的bean对象
@@ -109,7 +138,7 @@ class Definition
      *  略
      *</pre>
      */
-    private $reflection = null;
+    private $_reflection = null;
 
     /**
      * 初始化方法
@@ -154,14 +183,46 @@ class Definition
      */
     protected $_lazy = false;
 
-    protected $_formatArgs = null;
+    /**
+     * 构建后构造参数集合
+     * @var null
+     */
+    protected $_buildArgs = null;
 
-    protected $_formatAttrs = null;
+    /**
+     * 构建后类属性集合
+     * @var null
+     */
+    protected $_buildAttrs = null;
 
     /**
      * @var ContainerManager
      */
     protected $containerManager;
+
+    /**
+     * 构造方法
+     *<B>说明：</B>
+     *<pre>
+     *  略
+     *</pre>
+     * @param array $config 配置
+     */
+    public function __construct(array $config = [])
+    {
+        if (!empty($config)) {
+            $attributes = $this->splitAttrs($config);
+            foreach ($attributes as $name=>$value) {
+                if ($value != null) {
+                    $this->{$name} = $value;
+                }
+            }
+        }
+
+        if ($this->_scope === null) {
+            $this->_scope = self::DEFAULT_SCOPE;
+        }
+    }
 
     public function getContainerManager():ContainerManager
     {
@@ -171,42 +232,7 @@ class Definition
     public function setContainerManager(ContainerManager $containerManager):void
     {
         $this->containerManager = $containerManager;
-
     }
-
-    /**
-     * 构造方法
-     *<B>说明：</B>
-     *<pre>
-     *  略
-     *</pre>
-     * @param string $id bean id
-     * @param string $ref bean 别名
-     * @param $clazz $clazz　对应class
-     */
-    public function __construct($id ,$ref = null,$clazz = null)
-    {
-        // 属性赋值
-        if (is_array($id)) {
-            if (!empty($id)) {
-                $id = $this->formatAttrs($id);
-                foreach ($id as $attr=>$value) {
-                    if ($value != null) {
-                        $this->$attr = $value;
-                    }
-                }
-            }
-        } else {
-            $this->_id = $id;
-            $this->_ref = $ref;
-            $this->class = $clazz;
-        }
-
-        if ($this->_scope === null) {
-            $this->_scope = self::DEFAULT_SCOPE;
-        }
-    }
-
 
     public function getId():?string
     {
@@ -280,7 +306,11 @@ class Definition
                     return $ref_definition->createProxy($args);
                 }
             } else {
-                return $this->getContainerManager()->getBean($this->_ref);
+                if (strpos($this->_ref,'\\') !== false) {
+                    return $this->getContainerManager()->getBeanByClass($this->_ref);
+                } else {
+                    return $this->getContainerManager()->getBean($this->_ref);
+                }
             }
         } else if ($this->_func != null) {
             if ($this->_func instanceof \Closure) {
@@ -309,14 +339,19 @@ class Definition
     {
         // 创建对象
         $classReflection = $this->getReflection();
-        $parameters = $this->buildArgs($args);
-        $object = $classReflection->make($parameters);
+        $object = $classReflection->make($this->getArgs($args));
         // 设置其他属性
-        if ($this->_attrs != null) {
-            $this->buildAttrs();
-            foreach ($this->_formatAttrs as $name=>$value) {
-                $object->$name = $value;
+        if (!empty($this->_attrs)) {
+            // 注入public 属性
+            foreach ($this->getAttrs() as $name=>$value) {
+                if ($value instanceof Definition) {
+                    $object->$name = $value->make();
+                } else {
+                    $object->$name = $value;
+                }
             }
+
+            // 尝试set 注入属性
         }
 
         // 调用类对象初始化方法
@@ -348,7 +383,7 @@ class Definition
     }
 
     /**
-     * 构建类的构造参数(args)
+     * 获取构造参数
      *<B>说明：</B>
      *<pre>
      *  略
@@ -356,14 +391,14 @@ class Definition
      * @param array $args 构造参数
      * @return array
      */
-    protected function buildArgs(array $args):array
+    protected function getArgs(array $args):array
     {
-        if (is_null($this->_formatArgs)) {
-            $this->_formatArgs = $this->buildParams($this->_args);
+        if (is_null($this->_buildArgs)) {
+            $this->_buildArgs = $this->buildInjectParams($this->_args);
         }
 
-        $parameters = $this->_formatArgs;
-        // 合并参数
+        $parameters = $this->_buildArgs;
+        // 合并参数，此处有毛病
         if (!empty($args)) {
             foreach ($args as $index => $param) {
                 $parameters[$index] = $param;
@@ -380,11 +415,13 @@ class Definition
      *  略
      *</pre>
      */
-    protected function buildAttrs():void
+    protected function getAttrs():array
     {
-        if (is_null($this->_formatAttrs)) {
-            $this->_formatAttrs = $this->buildParams($this->_attrs);
+        if (is_null($this->_buildAttrs)) {
+            $this->_buildAttrs = $this->buildInjectParams($this->_attrs);
         }
+
+        return $this->_buildAttrs;
     }
 
     /**
@@ -396,23 +433,23 @@ class Definition
      */
     public function getReflection():ClassReflection
     {
-        if ($this->reflection == null) {
-            $this->reflection = new ClassReflection($this->class,$this);
+        if ($this->_reflection == null) {
+            $this->_reflection = new ClassReflection($this->class,$this);
         }
 
-        return $this->reflection;
+        return $this->_reflection;
     }
 
     /**
-     * 格式化参数
+     * 构建注入参数
      *<B>说明：</B>
      *<pre>
-     *  略
+     *  构建构造参数,类属性
      *</pre>
      * @param array $params 参数
      * @return array
      */
-    protected function buildParams(array $params = []):array
+    protected function buildInjectParams(array $params = []):array
     {
         if (empty($params)) {
             return [];
@@ -420,32 +457,25 @@ class Definition
 
         foreach ($params as $name=>$value) {
             if (is_array($value) && $this->isAssoc($value)) {
-                $value = $this->buildParams($value);
+                $value = $this->buildInjectParams($value);
             } else {
-                if ($value instanceof Definition) {
-                    $value = $value->make();
-                } else {
-                    if (is_string($value)) {
-                        if (preg_match(static::BEAN_REF_REGEX, $value, $match) ) {
-                            $ref_type = $match[1];
-                            if ($ref_type === 'lazy') {
-                                $definition = $this->newDefinition(['_ref'=>$match[2],'_lazy'=>true]);
-                            } else {
-                                $definition = $this->newDefinition(['_ref'=>$match[2]]);
-                            }
-
-                            $value = $definition->make();
-                        } else if (preg_match(static::PARAMS_REGEX, $value, $match)) {
-                            $func_name = $match[1];
-                            $func_params = $match[2];
-                            $func_params_arr = explode(static::PARAMS_SPLIT_CHARACTER,$func_params);
-                            $definition = $this->newDefinition(['_func'=>[$func_name,$func_params_arr]]);
-                            $value = $definition->make();
+                if (is_string($value)) {
+                    if (preg_match(static::BEAN_REF_REGEX, $value, $match) ) {
+                        $ref_type = $match[1];
+                        if ($ref_type === 'lazy') {
+                            $value = $this->newDefinition(['_ref'=>$match[2],'_lazy'=>true]);
+                        } else {
+                            $value = $this->newDefinition(['_ref'=>$match[2]]);
                         }
-                    } else if ($value instanceof Ref) {
-                        $definition = $this->newDefinition(['_ref'=>$value->ref,'_lazy'=>$value->lazy]);
-                        $value = $definition->make();
+
+                    } else if (preg_match(static::PARAMS_REGEX, $value, $match)) {
+                        $func_name = $match[1];
+                        $func_params = $match[2];
+                        $func_params_arr = explode(static::PARAMS_SPLIT_CHARACTER,$func_params);
+                        $value = $this->newDefinition(['_func'=>[$func_name,$func_params_arr]]);
                     }
+                } else if ($value instanceof Ref) {
+                    $value = $this->newDefinition(['_ref'=>$value->ref,'_lazy'=>$value->lazy]);
                 }
             }
 
@@ -456,7 +486,7 @@ class Definition
     }
 
     /**
-     * 整理类自定义参数
+     * 分离本类属性,构造参数,用户属性
      *<B>说明：</B>
      *<pre>
      *  略
@@ -464,7 +494,7 @@ class Definition
      * @param  array $attrs 参数
      * @return array
      */
-    protected function formatAttrs(array $attrs = []):array
+    protected function splitAttrs(array $attrs = []):array
     {
         $attributes = [];
         $customAttrs = [];
@@ -487,7 +517,6 @@ class Definition
             $attributes['_attrs'] = $customAttrs;
         }
 
-
         return $attributes;
     }
 
@@ -508,7 +537,6 @@ class Definition
     public function newDefinition(array $attrs = []):self
     {
         $definition  = new static($attrs);
-
         $definition->setContainerManager($this->getContainerManager());
 
         return $definition;

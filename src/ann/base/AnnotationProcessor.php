@@ -98,7 +98,7 @@ class AnnotationProcessor
      * @param string $annotation
      * @return array
      */
-    public function getAnnotationors(string $keyword = '',string $annotation = null)
+    public function getAnnotationors(string $keyword = '',string $annotation = null):array
     {
         $name = '';
         $target_type = '';
@@ -170,7 +170,7 @@ class AnnotationProcessor
      * @param Ann $annotation
      * @param string $class
      */
-    public function handleClass($annotation,string $class)
+    public function handleClass($annotation,string $class):void
     {
 
         $shortName = $this->getAnnotationShortName($annotation);
@@ -194,7 +194,7 @@ class AnnotationProcessor
      * @param string $class
      * @param string $attribute
      */
-    public function handleProperty($annotation,string $class,string $attribute)
+    public function handleProperty($annotation,string $class,string $attribute):void
     {
 
         $shortName = $this->getAnnotationShortName($annotation);
@@ -218,7 +218,7 @@ class AnnotationProcessor
      * @param string $class
      * @param string $method
      */
-    public function handleMethod($annotation,string $class,string $method)
+    public function handleMethod($annotation,string $class,string $method):void
     {
         $shortName = $this->getAnnotationShortName($annotation);
         if (isset($this->annotationHandlers[$shortName])) {
@@ -240,7 +240,7 @@ class AnnotationProcessor
      * @param object $annotation
      * @return array
      */
-    protected function getAttribute($annotation)
+    protected function getAttribute($annotation):array
     {
         $annAttributes = get_object_vars($annotation);
 
@@ -256,7 +256,7 @@ class AnnotationProcessor
      * @param object $annotation
      * @return array
      */
-    protected function getProperty($annotation,bool $getNull = true)
+    protected function getProperty($annotation,bool $getNull = true):array
     {
         $annAttributes = [];
         $class = new ReflectionClass(get_class($annotation));
